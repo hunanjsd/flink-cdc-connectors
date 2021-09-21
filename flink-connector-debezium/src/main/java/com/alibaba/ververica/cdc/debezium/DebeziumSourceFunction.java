@@ -175,11 +175,13 @@ public class DebeziumSourceFunction<T> extends RichSourceFunction<T>
     @Override
     public void initializeState(FunctionInitializationContext context) throws Exception {
         OperatorStateStore stateStore = context.getOperatorStateStore();
+        // 构建 offset 状态对象
         this.offsetState =
                 stateStore.getUnionListState(
                         new ListStateDescriptor<>(
                                 OFFSETS_STATE_NAME,
                                 PrimitiveArrayTypeInfo.BYTE_PRIMITIVE_ARRAY_TYPE_INFO));
+        // 构建 history 状态对象
         this.historyRecordsState =
                 stateStore.getUnionListState(
                         new ListStateDescriptor<>(
@@ -227,6 +229,7 @@ public class DebeziumSourceFunction<T> extends RichSourceFunction<T>
         int recordsCount = 0;
         boolean firstEntry = true;
         for (String record : historyRecordsState.get()) {
+            // 写入的 first 行是 instance 名称，所以跳过第一行
             if (firstEntry) {
                 // we store the engine instance name in the first element
                 this.engineInstanceName = record;
@@ -269,6 +272,7 @@ public class DebeziumSourceFunction<T> extends RichSourceFunction<T>
                 serializedOffset = restoredOffsetState.getBytes(StandardCharsets.UTF_8);
             }
         } else {
+            // 序列化当前的 offset
             byte[] currentState = consumer.snapshotCurrentState();
             if (currentState == null && restoredOffsetState != null) {
                 // the consumer has been initialized, but has not yet received any data,
@@ -280,6 +284,7 @@ public class DebeziumSourceFunction<T> extends RichSourceFunction<T>
         }
 
         if (serializedOffset != null) {
+            // offset 放到 state 里面
             offsetState.add(serializedOffset);
             // the map cannot be asynchronously updated, because only one checkpoint call
             // can happen on this function at a time: either snapshotState() or
@@ -345,6 +350,7 @@ public class DebeziumSourceFunction<T> extends RichSourceFunction<T>
                 properties.getProperty(
                         Heartbeat.HEARTBEAT_TOPICS_PREFIX.name(),
                         Heartbeat.HEARTBEAT_TOPICS_PREFIX.defaultValueAsString());
+        // 非常重要的对象， consumer debezium engine 里面的数据，处理加工
         this.debeziumConsumer =
                 new DebeziumChangeConsumer<>(
                         sourceContext,
@@ -353,7 +359,7 @@ public class DebeziumSourceFunction<T> extends RichSourceFunction<T>
                         this::reportError,
                         dbzHeartbeatPrefix);
 
-        // create the engine with this configuration ...
+        // create the engine with this configuration ..., consumer 消费 engine 里面的信息
         this.engine =
                 DebeziumEngine.create(Connect.class)
                         .using(properties)

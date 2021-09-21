@@ -54,6 +54,7 @@ public class DebeziumChangeConsumer<T>
     public static final String LAST_COMPLETELY_PROCESSED_LSN_KEY = "lsn_proc";
     public static final String LAST_COMMIT_LSN_KEY = "lsn_commit";
 
+
     private final SourceFunction.SourceContext<T> sourceContext;
 
     /**
@@ -87,7 +88,7 @@ public class DebeziumChangeConsumer<T>
     /** Timestamp of change event. If the event is a snapshot event, the timestamp is 0L. */
     private volatile long messageTimestamp = 0L;
 
-    /** The last record processing time. */
+    /** The last record processing time. 处理时间 */
     private volatile long processTime = 0L;
 
     /**
@@ -134,6 +135,7 @@ public class DebeziumChangeConsumer<T>
         try {
             for (ChangeEvent<SourceRecord, SourceRecord> event : changeEvents) {
                 SourceRecord record = event.value();
+                // 更新处理数据的 timestamp 时间
                 updateMessageTimestamp(record);
                 fetchDelay = processTime - messageTimestamp;
 
@@ -147,6 +149,7 @@ public class DebeziumChangeConsumer<T>
                     continue;
                 }
 
+                // RowDataDebeziumDeserializeSchema
                 deserialization.deserialize(record, debeziumCollector);
 
                 if (isInDbSnapshotPhase) {
@@ -177,6 +180,7 @@ public class DebeziumChangeConsumer<T>
     private void updateMessageTimestamp(SourceRecord record) {
         Schema schema = record.valueSchema();
         Struct value = (Struct) record.value();
+        // source 里面有一些更新元数据信息 eg: ts_sec、pos、file、query 语句等
         if (schema.field(Envelope.FieldName.SOURCE) == null) {
             return;
         }

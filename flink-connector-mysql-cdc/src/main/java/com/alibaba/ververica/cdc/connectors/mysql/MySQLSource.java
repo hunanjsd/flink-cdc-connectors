@@ -170,6 +170,7 @@ public class MySQLSource {
                 props.setProperty("database.serverTimezone", serverTimeZone);
             }
 
+            // 如果不指定 file、offset 这里就是 null
             DebeziumOffset specificOffset = null;
             switch (startupOptions.startupMode) {
                 case INITIAL:

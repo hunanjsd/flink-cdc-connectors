@@ -100,6 +100,7 @@ public class MySQLTableSource implements ScanTableSource {
         RowType rowType = (RowType) physicalSchema.toRowDataType().getLogicalType();
         TypeInformation<RowData> typeInfo =
                 scanContext.createTypeInformation(physicalSchema.toRowDataType());
+        // 定义 debezium record 的序列化
         DebeziumDeserializationSchema<RowData> deserializer =
                 new RowDataDebeziumDeserializeSchema(
                         rowType, typeInfo, ((rowData, rowKind) -> {}), serverTimeZone);

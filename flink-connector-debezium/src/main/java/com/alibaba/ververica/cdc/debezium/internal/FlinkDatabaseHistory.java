@@ -46,6 +46,7 @@ public class FlinkDatabaseHistory extends AbstractDatabaseHistory {
     public static final String DATABASE_HISTORY_INSTANCE_NAME = "database.history.instance.name";
 
     /**
+     * 是一个全局静态变量
      * We will synchronize the records into Flink's state during snapshot. We have to use a global
      * variable to communicate with Flink's source function, because Debezium will construct the
      * instance of {@link DatabaseHistory} itself. Maybe we can improve this in the future.
@@ -56,7 +57,7 @@ public class FlinkDatabaseHistory extends AbstractDatabaseHistory {
      * because we only monitor the schema changes for one single table.
      *
      * @see
-     *     com.alibaba.ververica.cdc.debezium.DebeziumSourceFunction#snapshotState(org.apache.flink.runtime.state.FunctionSnapshotContext)
+     *com.alibaba.ververica.cdc.debezium.DebeziumSourceFunction#snapshotState(org.apache.flink.runtime.state.FunctionSnapshotContext)
      */
     public static final Map<String, ConcurrentLinkedQueue<HistoryRecord>> ALL_RECORDS =
             new HashMap<>();
@@ -65,6 +66,7 @@ public class FlinkDatabaseHistory extends AbstractDatabaseHistory {
     private String instanceName;
 
     /**
+     * 实例名称(随机的) + records 数据
      * Registers the given HistoryRecords into global variable under the given instance name, in
      * order to be accessed by instance of {@link FlinkDatabaseHistory}.
      */
@@ -122,6 +124,9 @@ public class FlinkDatabaseHistory extends AbstractDatabaseHistory {
         }
     }
 
+    /**
+     * 存储数据
+     */
     @Override
     protected void storeRecord(HistoryRecord record) throws DatabaseHistoryException {
         this.records.add(record);
