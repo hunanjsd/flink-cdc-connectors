@@ -1,0 +1,35 @@
+{
+  "schema": {
+
+  },
+  "payload": {
+    "before": {
+      "id": 1004,
+      "first_name": "Anne",
+      "last_name": "Kretchmar",
+      "email": "annek@noanswer.org"
+    },
+    "after": {
+      "id": 1004,
+      "first_name": "Anne Marie",
+      "last_name": "Kretchmar",
+      "email": "annek@noanswer.org"
+    },
+    "source": {
+      "name": "1.7.1.Final",
+      "name": "dbserver1",
+      "server_id": 223344,
+      "ts_sec": 1486501486,
+      "gtid": null,
+      "file": "mysql-bin.000003",
+      "pos": 364,
+      "row": 0,
+      "snapshot": null,
+      "thread": 3,
+      "db": "inventory",
+      "table": "customers"
+    },
+    "op": "u",
+    "ts_ms": 1486501486308
+  }
+}

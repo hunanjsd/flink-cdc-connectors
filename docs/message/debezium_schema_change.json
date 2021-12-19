@@ -1,0 +1,129 @@
+{
+  "schema": {
+  },
+  "payload": {
+    "source": {
+      "version": "1.7.1.Final",
+      "connector": "mysql",
+      "name": "dbserver1",
+      "ts_ms": 0,
+      "snapshot": "false",
+      "db": "inventory",
+      "sequence": null,
+      "table": "customers",
+      "server_id": 0,
+      "gtid": null,
+      "file": "mysql-bin.000003",
+      "pos": 219,
+      "row": 0,
+      "thread": null,
+      "query": null
+    },
+    "databaseName": "inventory",
+    "schemaName": null,
+    "ddl": "ALTER TABLE customers ADD COLUMN middle_name VARCHAR(2000)",
+    "tableChanges": [
+      {
+        "type": "ALTER",
+        "id": "\"inventory\".\"customers\"",
+        "table": {
+          "defaultCharsetName": "latin1",
+          "primaryKeyColumnNames": [
+            "id"
+          ],
+          "columns": [
+            {
+              "name": "id",
+              "jdbcType": 4,
+              "nativeType": null,
+              "typeName": "INT",
+              "typeExpression": "INT",
+              "charsetName": null,
+              "length": 11,
+              "scale": null,
+              "position": 1,
+              "optional": false,
+              "autoIncremented": true,
+              "generated": true
+            },
+            {
+              "name": "first_name",
+              "jdbcType": 12,
+              "nativeType": null,
+              "typeName": "VARCHAR",
+              "typeExpression": "VARCHAR",
+              "charsetName": "latin1",
+              "length": 255,
+              "scale": null,
+              "position": 2,
+              "optional": false,
+              "autoIncremented": false,
+              "generated": false
+            },
+            {
+              "name": "last_name",
+              "jdbcType": 12,
+              "nativeType": null,
+              "typeName": "VARCHAR",
+              "typeExpression": "VARCHAR",
+              "charsetName": "latin1",
+              "length": 255,
+              "scale": null,
+              "position": 3,
+              "optional": false,
+              "autoIncremented": false,
+              "generated": false
+            },
+            {
+              "name": "email",
+              "jdbcType": 12,
+              "nativeType": null,
+              "typeName": "VARCHAR",
+              "typeExpression": "VARCHAR",
+              "charsetName": "latin1",
+              "length": 255,
+              "scale": null,
+              "position": 4,
+              "optional": false,
+              "autoIncremented": false,
+              "generated": false
+            },
+            {
+              "name": "middle_name",
+              "jdbcType": 12,
+              "nativeType": null,
+              "typeName": "VARCHAR",
+              "typeExpression": "VARCHAR",
+              "charsetName": "latin1",
+              "length": 2000,
+              "scale": null,
+              "position": 5,
+              "optional": true,
+              "autoIncremented": false,
+              "generated": false
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "payload": {
+    "databaseName": "inventory",
+    "ddl": "CREATE TABLE products ( id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, description VARCHAR(512), weight FLOAT ); ALTER TABLE products AUTO_INCREMENT = 101;",
+    "source": {
+      "version": "1.7.1.Final",
+      "name": "mysql-server-1",
+      "server_id": 0,
+      "ts_ms": 0,
+      "gtid": null,
+      "file": "mysql-bin.000003",
+      "pos": 154,
+      "row": 0,
+      "snapshot": true,
+      "thread": null,
+      "db": null,
+      "table": null,
+      "query": null
+    }
+  }
+}

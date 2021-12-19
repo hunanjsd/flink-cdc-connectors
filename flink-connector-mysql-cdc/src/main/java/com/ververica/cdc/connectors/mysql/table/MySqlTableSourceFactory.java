@@ -67,7 +67,11 @@ import static org.apache.flink.util.Preconditions.checkState;
 public class MySqlTableSourceFactory implements DynamicTableSourceFactory {
 
     private static final String IDENTIFIER = "mysql-cdc";
+ 
 
+    /**
+     * 创建动态表, context 是 flink create table 的时候传入的
+     */
     @Override
     public DynamicTableSource createDynamicTableSource(Context context) {
         final FactoryUtil.TableFactoryHelper helper =

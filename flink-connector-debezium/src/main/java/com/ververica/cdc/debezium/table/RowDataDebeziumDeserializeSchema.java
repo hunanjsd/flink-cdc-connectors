@@ -152,6 +152,13 @@ public final class RowDataDebeziumDeserializeSchema
         return (GenericRowData) physicalConverter.convert(before, beforeSchema);
     }
 
+
+    /**
+     * 将数据 emit 发射到下游算子
+     * @param inRecord 输入的所有数据
+     * @param physicalRow 提取出来的数据(after、before等)
+     * @param collector s、收集器
+     */
     private void emit(SourceRecord inRecord, RowData physicalRow, Collector<RowData> collector) {
         if (!hasMetadata) {
             collector.collect(physicalRow);
