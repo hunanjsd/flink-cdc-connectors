@@ -101,6 +101,7 @@ public class StatefulTaskContext {
     public void configure(MySqlSplit mySqlSplit) {
         // initial stateful objects
         final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
+        // 配置 table 过滤条件
         this.topicSelector = MySqlTopicSelector.defaultSelector(connectorConfig);
         EmbeddedFlinkDatabaseHistory.registerHistory(
                 sourceConfig
@@ -113,6 +114,7 @@ public class StatefulTaskContext {
                 loadStartingOffsetState(new MySqlOffsetContext.Loader(connectorConfig), mySqlSplit);
         validateAndLoadDatabaseHistory(offsetContext, databaseSchema);
 
+        // 代码写的不是一般的烂, 注释也不写，命名也不清晰
         this.taskContext =
                 new MySqlTaskContextImpl(connectorConfig, databaseSchema, binaryLogClient);
         final int queueSize =

@@ -31,8 +31,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * The {@code MySqlSplitAssigner} is responsible for deciding what split should be processed. It
- * determines split processing order.
+ * source 的 split 分配者. The {@code MySqlSplitAssigner} is responsible for deciding what split should
+ * be processed. It determines split processing order.
  */
 public interface MySqlSplitAssigner {
 

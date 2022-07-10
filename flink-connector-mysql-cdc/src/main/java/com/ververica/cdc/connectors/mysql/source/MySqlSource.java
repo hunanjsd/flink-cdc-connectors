@@ -126,9 +126,12 @@ public class MySqlSource<T>
 
     @Override
     public Boundedness getBoundedness() {
+        // 数据源是否有界
+        // 返回值为Boundedness.BOUNDED 或者 Boundedness.CONTINUOUS_UNBOUNDED
         return Boundedness.CONTINUOUS_UNBOUNDED;
     }
 
+    /** 这个推测是 tm 调用的. 建一个reader，读取它分配的split。这个Reader是全新的，不需要从状态恢复 */
     @Override
     public SourceReader<T, MySqlSplit> createReader(SourceReaderContext readerContext)
             throws Exception {
@@ -165,6 +168,7 @@ public class MySqlSource<T>
                 sourceConfig);
     }
 
+    /** 这个推测是 jm 调用. 创建 SplitEnumerator，开启一个新的输入. */
     @Override
     public SplitEnumerator<MySqlSplit, PendingSplitsState> createEnumerator(
             SplitEnumeratorContext<MySqlSplit> enumContext) {
@@ -173,9 +177,11 @@ public class MySqlSource<T>
         final MySqlValidator validator = new MySqlValidator(sourceConfig);
         validator.validate();
 
+        // mysql source 的并行 split 分配者
         final MySqlSplitAssigner splitAssigner;
         if (sourceConfig.getStartupOptions().startupMode == StartupMode.INITIAL) {
             try (JdbcConnection jdbc = openJdbcConnection(sourceConfig)) {
+                // remainingTables：什么狗屁变量命名
                 final List<TableId> remainingTables = discoverCapturedTables(jdbc, sourceConfig);
                 boolean isTableIdCaseSensitive = DebeziumUtils.isTableIdCaseSensitive(jdbc);
                 splitAssigner =
@@ -195,6 +201,7 @@ public class MySqlSource<T>
         return new MySqlSourceEnumerator(enumContext, sourceConfig, splitAssigner);
     }
 
+    /** 从Checkpoint恢复一个SplitEnumerator. */
     @Override
     public SplitEnumerator<MySqlSplit, PendingSplitsState> restoreEnumerator(
             SplitEnumeratorContext<MySqlSplit> enumContext, PendingSplitsState checkpoint) {
@@ -218,11 +225,13 @@ public class MySqlSource<T>
         return new MySqlSourceEnumerator(enumContext, sourceConfig, splitAssigner);
     }
 
+    /** 创建source split的serializer 当split从enumerator发送到reader和reader checkpoint的时候，split会被序列化 */
     @Override
     public SimpleVersionedSerializer<MySqlSplit> getSplitSerializer() {
         return MySqlSplitSerializer.INSTANCE;
     }
 
+    /** 获取SplitEnumerator checkpoint的serializer，用于处理SplitEnumerator#snapshotState()方法返回的结果 */
     @Override
     public SimpleVersionedSerializer<PendingSplitsState> getEnumeratorCheckpointSerializer() {
         return new PendingSplitsStateSerializer(getSplitSerializer());

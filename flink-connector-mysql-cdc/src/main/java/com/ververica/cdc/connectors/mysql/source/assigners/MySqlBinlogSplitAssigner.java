@@ -126,7 +126,7 @@ public class MySqlBinlogSplitAssigner implements MySqlSplitAssigner {
     public void close() {}
 
     // ------------------------------------------------------------------------------------------
-
+    // 唯一重要的实现方法, 这个 binlog 没有 stop offset
     private MySqlBinlogSplit createBinlogSplit() {
         try (JdbcConnection jdbc = DebeziumUtils.openJdbcConnection(sourceConfig)) {
             return new MySqlBinlogSplit(

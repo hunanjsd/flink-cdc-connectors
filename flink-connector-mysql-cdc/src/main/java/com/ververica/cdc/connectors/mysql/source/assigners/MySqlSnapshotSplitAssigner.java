@@ -68,10 +68,12 @@ public class MySqlSnapshotSplitAssigner implements MySqlSplitAssigner {
     private static final Logger LOG = LoggerFactory.getLogger(MySqlSnapshotSplitAssigner.class);
 
     private final List<TableId> alreadyProcessedTables;
+    // 存储多个表的 split, 就是所有的 split
     private final List<MySqlSnapshotSplit> remainingSplits;
     private final Map<String, MySqlSnapshotSplit> assignedSplits;
     private final Map<String, BinlogOffset> splitFinishedOffsets;
     private final MySqlSourceConfig sourceConfig;
+    // source 的并行度
     private final int currentParallelism;
     private final List<TableId> remainingTables;
     private final boolean isRemainingTablesCheckpointed;
@@ -145,6 +147,7 @@ public class MySqlSnapshotSplitAssigner implements MySqlSplitAssigner {
 
     @Override
     public void open() {
+        // source split 切片器
         chunkSplitter = createChunkSplitter(sourceConfig, isTableIdCaseSensitive);
 
         // the legacy state didn't snapshot remaining tables, discovery remaining table here
@@ -160,10 +163,12 @@ public class MySqlSnapshotSplitAssigner implements MySqlSplitAssigner {
             }
         }
         captureNewlyAddedTables();
+        // 对 capture table 做 split chunk 切分
         startAsynchronouslySplit();
     }
 
     private void captureNewlyAddedTables() {
+        // scan new table 默认是 false
         if (sourceConfig.isScanNewlyAddedTableEnabled()) {
             // check whether we got newly added tables
             try (JdbcConnection jdbc = openJdbcConnection(sourceConfig)) {
@@ -213,9 +218,10 @@ public class MySqlSnapshotSplitAssigner implements MySqlSplitAssigner {
                 assignedSplits.put(split.splitId(), split);
                 addAlreadyProcessedTablesIfNotExists(split.getTableId());
                 return Optional.of(split);
-            } else if (!remainingTables.isEmpty()) {
+            } else if (!remainingTables.isEmpty()) { // 表还有, 说明并没有 split 完
                 try {
                     // wait for the asynchronous split to complete
+                    // 懂了: split chunk 切分是异步的, lock 等他 split 完成
                     lock.wait();
                 } catch (InterruptedException e) {
                     throw new FlinkRuntimeException(
@@ -390,6 +396,7 @@ public class MySqlSnapshotSplitAssigner implements MySqlSplitAssigner {
                 Collection<MySqlSnapshotSplit> splits = chunkSplitter.generateSplits(nextTable);
                 synchronized (lock) {
                     remainingSplits.addAll(splits);
+                    // 注意, split chunk 完成后 table 会 remove 掉
                     remainingTables.remove(nextTable);
                     lock.notify();
                 }

@@ -136,6 +136,7 @@ public class MySqlSnapshotSplitReadTask extends AbstractSnapshotChangeEventSourc
                         topicSelector.topicNameFor(snapshotSplit.getTableId()),
                         dispatcher.getQueue());
 
+        // 数据读取前, 低水位 fileName + pos
         final BinlogOffset lowWatermark = currentBinlogOffset(jdbcConnection);
         LOG.info(
                 "Snapshot step 1 - Determining low watermark {} for split {}",
@@ -149,6 +150,7 @@ public class MySqlSnapshotSplitReadTask extends AbstractSnapshotChangeEventSourc
         LOG.info("Snapshot step 2 - Snapshotting data");
         createDataEvents(ctx, snapshotSplit.getTableId());
 
+        // 数据读取后, 低水位 fileName + pos
         final BinlogOffset highWatermark = currentBinlogOffset(jdbcConnection);
         LOG.info(
                 "Snapshot step 3 - Determining high watermark {} for split {}",

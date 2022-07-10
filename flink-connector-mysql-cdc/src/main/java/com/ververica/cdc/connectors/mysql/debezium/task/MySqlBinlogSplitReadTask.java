@@ -47,6 +47,7 @@ import static com.ververica.cdc.connectors.mysql.source.utils.RecordUtils.getBin
 public class MySqlBinlogSplitReadTask extends MySqlStreamingChangeEventSource {
 
     private static final Logger LOG = LoggerFactory.getLogger(MySqlBinlogSplitReadTask.class);
+    // 无界情况下的截止 binlog 位置
     private final MySqlBinlogSplit binlogSplit;
     private final MySqlOffsetContext offsetContext;
     private final EventDispatcherImpl<TableId> eventDispatcher;
@@ -74,6 +75,7 @@ public class MySqlBinlogSplitReadTask extends MySqlStreamingChangeEventSource {
                 clock,
                 taskContext,
                 metrics);
+        // binlogSplit 是 snapshot 后的 binlog 补充阶段截止 binlog 位置
         this.binlogSplit = binlogSplit;
         this.eventDispatcher = dispatcher;
         this.offsetContext = offsetContext;
@@ -95,7 +97,7 @@ public class MySqlBinlogSplitReadTask extends MySqlStreamingChangeEventSource {
         // check do we need to stop for read binlog for snapshot split.
         if (isBoundedRead()) {
             final BinlogOffset currentBinlogOffset = getBinlogPosition(offsetContext.getOffset());
-            // reach the high watermark, the binlog reader should finished
+            // reach the high watermark, the binlog reader should finished, 判断是否达达无界位置
             if (currentBinlogOffset.isAtOrAfter(binlogSplit.getEndingOffset())) {
                 // send binlog end event
                 try {
@@ -108,7 +110,8 @@ public class MySqlBinlogSplitReadTask extends MySqlStreamingChangeEventSource {
                     errorHandler.setProducerThrowable(
                             new DebeziumException("Error processing binlog signal event", e));
                 }
-                // tell reader the binlog task finished
+                // tell reader the binlog task finished, 手动关闭 debezium 的客户端连接, 参考
+                // MySqlStreamingChangeEventSource 的 execute 函数
                 ((SnapshotBinlogSplitChangeEventSourceContextImpl) context).finished();
             }
         }

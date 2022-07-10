@@ -29,6 +29,7 @@ import org.apache.flink.util.FlinkRuntimeException;
 
 import com.ververica.cdc.connectors.mysql.debezium.DebeziumUtils;
 import com.ververica.cdc.connectors.mysql.source.config.MySqlSourceConfig;
+import com.ververica.cdc.connectors.mysql.source.enumerator.MySqlSourceEnumerator;
 import com.ververica.cdc.connectors.mysql.source.events.BinlogSplitMetaEvent;
 import com.ververica.cdc.connectors.mysql.source.events.BinlogSplitMetaRequestEvent;
 import com.ververica.cdc.connectors.mysql.source.events.FinishedSnapshotSplitsAckEvent;
@@ -70,7 +71,7 @@ import static com.ververica.cdc.connectors.mysql.source.split.MySqlBinlogSplit.t
 import static com.ververica.cdc.connectors.mysql.source.split.MySqlBinlogSplit.toSuspendedBinlogSplit;
 import static com.ververica.cdc.connectors.mysql.source.utils.ChunkUtils.getNextMetaGroupId;
 
-/** The source reader for MySQL source splits. */
+/** The source reader for MySQL source splits. 负责读取SplitEnumerator分配的source split */
 public class MySqlSourceReader<T>
         extends SingleThreadMultiplexSourceReaderBase<
                 SourceRecord, T, MySqlSplit, MySqlSplitState> {
@@ -78,6 +79,7 @@ public class MySqlSourceReader<T>
     private static final Logger LOG = LoggerFactory.getLogger(MySqlSourceReader.class);
 
     private final MySqlSourceConfig sourceConfig;
+    // 看的脑溢血, 这个是干嘛的也不注释下, 已经完成但是未与 enumerator 上报的 split
     private final Map<String, MySqlSnapshotSplit> finishedUnackedSplits;
     private final Map<String, MySqlBinlogSplit> uncompletedBinlogSplits;
     private final int subtaskId;
@@ -105,6 +107,10 @@ public class MySqlSourceReader<T>
         this.suspendedBinlogSplit = null;
     }
 
+    /**
+     * 启动reader {@link MySqlSourceEnumerator} 的 handleSplitRequest 函数, 表示目前 reader 以前准备好了 请求分配 split
+     * chunk
+     */
     @Override
     public void start() {
         if (getNumberOfCurrentlyAssignedSplits() == 0) {
@@ -121,6 +127,7 @@ public class MySqlSourceReader<T>
         }
     }
 
+    /** 创建source的checkpoint */
     @Override
     public List<MySqlSplit> snapshotState(long checkpointId) {
         List<MySqlSplit> stateSplits = super.snapshotState(checkpointId);
@@ -164,20 +171,27 @@ public class MySqlSourceReader<T>
         context.sendSplitRequest();
     }
 
+    /**
+     * 添加一系列splits，以供reader读取。这个方法在SplitEnumeratorContext#assignSplit(SourceSplit, int)
+     * 或者SplitEnumeratorContext#assignSplits(SplitsAssignment)中调用.
+     * 上层调用是：SourceCoordinatorContext.assignSplits -> SourceOperator.handleOperatorEvent -> 此处
+     */
     @Override
     public void addSplits(List<MySqlSplit> splits) {
         // restore for finishedUnackedSplits
         List<MySqlSplit> unfinishedSplits = new ArrayList<>();
         for (MySqlSplit split : splits) {
             LOG.info("Add Split: " + split);
-            if (split.isSnapshotSplit()) {
+            if (split.isSnapshotSplit()) { // 处理全量 snapshot + binlog 同步阶段
                 MySqlSnapshotSplit snapshotSplit = split.asSnapshotSplit();
-                if (snapshotSplit.isSnapshotReadFinished()) {
+                // 写的代码真是有歧义, 垃圾就知道到瞎写 if-else, 都是 snapshot split 为啥会有 finished 的情况
+                if (snapshotSplit.isSnapshotReadFinished()) { // 是否已经完成 snapshot 阶段
                     finishedUnackedSplits.put(snapshotSplit.splitId(), snapshotSplit);
                 } else {
+                    // 收下保存这个 split
                     unfinishedSplits.add(split);
                 }
-            } else {
+            } else { // 专门处理当以的 binlog 同步情况
                 MySqlBinlogSplit binlogSplit = split.asBinlogSplit();
                 // the binlog split is suspended
                 if (binlogSplit.isSuspended()) {
@@ -197,6 +211,7 @@ public class MySqlSourceReader<T>
         reportFinishedSnapshotSplitsIfNeed();
         // add all un-finished splits (including binlog split) to SourceReaderBase
         if (!unfinishedSplits.isEmpty()) {
+            // super.addSplits 非常重要, 里面会创建 fetch 去获取每个 split 的数据
             super.addSplits(unfinishedSplits);
         }
     }
@@ -222,19 +237,25 @@ public class MySqlSourceReader<T>
         }
     }
 
+    /**
+     * 处理SplitEnumerator发出的SourceEvent。 SplitEnumeratorContext#sendEventToSourceReader(int,
+     * SourceEvent)发送event的时候调用
+     */
     @Override
     public void handleSourceEvents(SourceEvent sourceEvent) {
         if (sourceEvent instanceof FinishedSnapshotSplitsAckEvent) {
+            // 这里是已经确认的 split
             FinishedSnapshotSplitsAckEvent ackEvent = (FinishedSnapshotSplitsAckEvent) sourceEvent;
             LOG.debug(
                     "The subtask {} receives ack event for {} from enumerator.",
                     subtaskId,
                     ackEvent.getFinishedSplits());
+            // 将 enumerator 确认完成后的 split 删除
             for (String splitId : ackEvent.getFinishedSplits()) {
                 this.finishedUnackedSplits.remove(splitId);
             }
         } else if (sourceEvent instanceof FinishedSnapshotSplitsRequestEvent) {
-            // report finished snapshot splits
+            // report finished snapshot splits, 上传已经完成的 snapshot split
             LOG.debug(
                     "The subtask {} receives request to report finished snapshot splits.",
                     subtaskId);
@@ -271,6 +292,7 @@ public class MySqlSourceReader<T>
         }
     }
 
+    // 想 enumerator 上报已经 finished 的 split
     private void reportFinishedSnapshotSplitsIfNeed() {
         if (!finishedUnackedSplits.isEmpty()) {
             final Map<String, BinlogOffset> finishedOffsets = new HashMap<>();

@@ -88,6 +88,7 @@ public class SnapshotSplitReader implements DebeziumReader<SourceRecord, MySqlSp
         this.reachEnd = new AtomicBoolean(false);
     }
 
+    /** 真正提交 debezium 客户端的地方, 注意这里也是异步提交, 数据放到 queue 队列中 */
     public void submitSplit(MySqlSplit mySqlSplit) {
         this.currentSnapshotSplit = mySqlSplit.asSnapshotSplit();
         statefulTaskContext.configure(currentSnapshotSplit);
@@ -113,6 +114,7 @@ public class SnapshotSplitReader implements DebeziumReader<SourceRecord, MySqlSp
                         // execute snapshot read task
                         final SnapshotSplitChangeEventSourceContextImpl sourceContext =
                                 new SnapshotSplitChangeEventSourceContextImpl();
+                        // sourceContext 里面存储低水位和高水位
                         SnapshotResult snapshotResult =
                                 splitSnapshotReadTask.execute(sourceContext);
 

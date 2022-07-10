@@ -52,11 +52,16 @@ import static com.ververica.cdc.connectors.mysql.debezium.task.context.StatefulT
 
 /**
  * A subclass implementation of {@link EventDispatcher}.
- *
  * <pre>
  *  1. This class shares one {@link ChangeEventQueue} between multiple readers.
  *  2. This class override some methods for dispatching {@link HistoryRecord} directly,
  *     this is useful for downstream to deserialize the {@link HistoryRecord} back.
+ * </pre>
+ * 疑问
+ * <pre>
+ *  1. dispatch 何时被创建
+ *  2. 数据写入到 queue, 如何被下游读取
+ *  3. dispatch 和 Reader 什么关系
  * </pre>
  */
 public class EventDispatcherImpl<T extends DataCollectionId> extends EventDispatcher<T> {
@@ -66,6 +71,7 @@ public class EventDispatcherImpl<T extends DataCollectionId> extends EventDispat
     public static final String HISTORY_RECORD_FIELD = "historyRecord";
     private static final DocumentWriter DOCUMENT_WRITER = DocumentWriter.defaultWriter();
 
+    // queue 存储的 DataChangeEvent 是具体的单条变更数据
     private final ChangeEventQueue<DataChangeEvent> queue;
     private final HistorizedDatabaseSchema historizedSchema;
     private final DataCollectionFilters.DataCollectionFilter<T> filter;
@@ -79,7 +85,7 @@ public class EventDispatcherImpl<T extends DataCollectionId> extends EventDispat
             TopicSelector<T> topicSelector,
             DatabaseSchema<T> schema,
             ChangeEventQueue<DataChangeEvent> queue,
-            DataCollectionFilters.DataCollectionFilter<T> filter,
+            DataCollectionFilters.DataCollectionFilter<T> filter, // include table 的配置项
             ChangeEventCreator changeEventCreator,
             EventMetadataProvider metadataProvider,
             SchemaNameAdjuster schemaNameAdjuster) {

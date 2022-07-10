@@ -63,6 +63,7 @@ public class SignalEventDispatcher {
         this.sourcePartition = sourcePartition;
         this.topic = topic;
         this.queue = queue;
+        // 要构建 watermark 的 SourceRecord, 所以需要定义 key 和 value 的 schema 信息
         this.signalEventKeySchema =
                 SchemaBuilder.struct()
                         .name(SCHEMA_NAME_ADJUSTER.adjust(SIGNAL_EVENT_KEY_SCHEMA_NAME))

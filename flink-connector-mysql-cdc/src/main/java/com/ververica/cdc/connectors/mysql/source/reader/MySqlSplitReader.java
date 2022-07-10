@@ -153,6 +153,7 @@ public class MySqlSplitReader implements SplitReader<SourceRecord, MySqlSplit> {
                 }
                 final MySqlConnection jdbcConnection =
                         createMySqlConnection(sourceConfig.getDbzConfiguration());
+                // 创建 binlog read client, 此处并未过滤目标表
                 final BinaryLogClient binaryLogClient =
                         createBinaryClient(sourceConfig.getDbzConfiguration());
                 final StatefulTaskContext statefulTaskContext =

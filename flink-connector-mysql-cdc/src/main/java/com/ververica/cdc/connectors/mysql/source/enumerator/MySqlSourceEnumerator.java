@@ -96,11 +96,13 @@ public class MySqlSourceEnumerator implements SplitEnumerator<MySqlSplit, Pendin
         }
     }
 
+    /** 启动方法 */
     @Override
     public void start() {
         splitAssigner.open();
         suspendBinlogReaderIfNeed();
         wakeupBinlogReaderIfNeed();
+        // 这是一个定时器任务, 周期性调用
         this.context.callAsync(
                 this::getRegisteredReader,
                 this::syncWithReaders,
@@ -108,6 +110,10 @@ public class MySqlSourceEnumerator implements SplitEnumerator<MySqlSplit, Pendin
                 CHECK_EVENT_INTERVAL);
     }
 
+    /**
+     * 处理split请求。拥有指定subtask id的reader调用SourceReaderContext#sendSplitRequest()的时候调用 这个请求应该 tm 的
+     * reader 发送来的
+     */
     @Override
     public void handleSplitRequest(int subtaskId, @Nullable String requesterHostname) {
         if (!context.registeredReaders().containsKey(subtaskId)) {
@@ -115,16 +121,20 @@ public class MySqlSourceEnumerator implements SplitEnumerator<MySqlSplit, Pendin
             return;
         }
 
+        // 将 rpc 请求的 sub task id 保存到 reader 中
         readersAwaitingSplit.add(subtaskId);
+        // 分配 split chunk 给到 reader
         assignSplits();
     }
 
+    /** 把split添加回split enumerator 仅当SourceReader失败并且在上次成功checkpoint之后还有split分配给它的时候调用 */
     @Override
     public void addSplitsBack(List<MySqlSplit> splits, int subtaskId) {
         LOG.debug("MySQL Source Enumerator adds splits back: {}", splits);
         splitAssigner.addSplits(splits);
     }
 
+    /** 添加一个新的 SourceReader，指定subtask ID */
     @Override
     public void addReader(int subtaskId) {
         // send SuspendBinlogReaderEvent to source reader if the assigner's status is
@@ -134,9 +144,11 @@ public class MySqlSourceEnumerator implements SplitEnumerator<MySqlSplit, Pendin
         }
     }
 
+    /** 处理source reader的自定义SourceEvent */
     @Override
     public void handleSourceEvent(int subtaskId, SourceEvent sourceEvent) {
         if (sourceEvent instanceof FinishedSnapshotSplitsReportEvent) {
+            // 处理 reader 上报的已经完成的 split
             LOG.info(
                     "The enumerator receives finished split offsets {} from subtask {}.",
                     sourceEvent,
@@ -168,6 +180,7 @@ public class MySqlSourceEnumerator implements SplitEnumerator<MySqlSplit, Pendin
         }
     }
 
+    /** 创建split enumerator的checkpoint 需要假设所有操作在snapshot成功完成前发生。比如assignSplit操作不需要再snapshot中考虑 */
     @Override
     public PendingSplitsState snapshotState(long checkpointId) {
         return splitAssigner.snapshotState(checkpointId);
@@ -188,6 +201,7 @@ public class MySqlSourceEnumerator implements SplitEnumerator<MySqlSplit, Pendin
 
     // ------------------------------------------------------------------------------------------
 
+    /** 为 tm 中的 reader 分配 split 任务 */
     private void assignSplits() {
         final Iterator<Integer> awaitingReader = readersAwaitingSplit.iterator();
 
@@ -200,6 +214,7 @@ public class MySqlSourceEnumerator implements SplitEnumerator<MySqlSplit, Pendin
                 continue;
             }
 
+            // 从 assigner 里拿到一个 split chunk 分片
             Optional<MySqlSplit> split = splitAssigner.getNext();
             if (split.isPresent()) {
                 final MySqlSplit mySqlSplit = split.get();
