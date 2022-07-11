@@ -42,7 +42,10 @@ import java.util.Optional;
 
 import static com.ververica.cdc.connectors.mysql.debezium.DebeziumUtils.currentBinlogOffset;
 
-/** A {@link MySqlSplitAssigner} which only read binlog from current binlog position. */
+/**
+ * 这正常来说是不会 finished 的 A {@link MySqlSplitAssigner} which only read binlog from current binlog
+ * position.
+ */
 public class MySqlBinlogSplitAssigner implements MySqlSplitAssigner {
 
     private static final Logger LOG = LoggerFactory.getLogger(MySqlBinlogSplitAssigner.class);
@@ -56,6 +59,7 @@ public class MySqlBinlogSplitAssigner implements MySqlSplitAssigner {
         this(sourceConfig, false);
     }
 
+    // 传入状态值, 从 checkpoint 恢复
     public MySqlBinlogSplitAssigner(
             MySqlSourceConfig sourceConfig, BinlogPendingSplitsState checkpoint) {
         this(sourceConfig, checkpoint.isBinlogSplitAssigned());
@@ -75,6 +79,7 @@ public class MySqlBinlogSplitAssigner implements MySqlSplitAssigner {
         if (isBinlogSplitAssigned) {
             return Optional.empty();
         } else {
+            // 这个 assigner 只分配一次
             isBinlogSplitAssigned = true;
             return Optional.of(createBinlogSplit());
         }
@@ -126,13 +131,13 @@ public class MySqlBinlogSplitAssigner implements MySqlSplitAssigner {
     public void close() {}
 
     // ------------------------------------------------------------------------------------------
-    // 唯一重要的实现方法, 这个 binlog 没有 stop offset
+    // 唯一重要的实现方法, 这个 binlog split 没有 stop offset
     private MySqlBinlogSplit createBinlogSplit() {
         try (JdbcConnection jdbc = DebeziumUtils.openJdbcConnection(sourceConfig)) {
             return new MySqlBinlogSplit(
                     BINLOG_SPLIT_ID,
                     currentBinlogOffset(jdbc),
-                    BinlogOffset.NO_STOPPING_OFFSET,
+                    BinlogOffset.NO_STOPPING_OFFSET, // end 是无限制的
                     new ArrayList<>(),
                     new HashMap<>(),
                     0);

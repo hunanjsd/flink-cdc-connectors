@@ -18,7 +18,12 @@
 
 package com.ververica.cdc.connectors.mysql.debezium.dispatcher;
 
+import com.github.shyiko.mysql.binlog.event.Event;
+import com.ververica.cdc.connectors.mysql.debezium.reader.SnapshotSplitReader;
+import com.ververica.cdc.connectors.mysql.debezium.task.MySqlBinlogSplitReadTask;
+import com.ververica.cdc.connectors.mysql.debezium.task.MySqlSnapshotSplitReadTask;
 import com.ververica.cdc.connectors.mysql.source.offset.BinlogOffset;
+import com.ververica.cdc.connectors.mysql.source.split.MySqlBinlogSplit;
 import com.ververica.cdc.connectors.mysql.source.split.MySqlSplit;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.pipeline.DataChangeEvent;
@@ -54,7 +59,9 @@ public class SignalEventDispatcher {
 
     private final Schema signalEventKeySchema;
     private final Schema signalEventValueSchema;
+    // sourcePartition 在这里的目的是什么?
     private final Map<String, ?> sourcePartition;
+    // topic 在这里的目的是什么?
     private final String topic;
     private final ChangeEventQueue<DataChangeEvent> queue;
 
@@ -78,6 +85,16 @@ public class SignalEventDispatcher {
                         .build();
     }
 
+    /**
+     * 调用情况:
+     *
+     * <pre>
+     * 1. {@link MySqlSnapshotSplitReadTask#doExecute} 在执行 snapshot split 前后会发送 low、high 水位信息
+     * 2. {@link SnapshotSplitReader#dispatchBinlogEndEvent(MySqlBinlogSplit)} 在 snapshot 完成后, 订阅步骤一的
+     * low -> high 之间的 binlog 消息, 如果 low=high 直接 dispatch 数据
+     * 3. {@link MySqlBinlogSplitReadTask#handleEvent(Event)} 在处理 event 数据时判断是否达到最大的 binlog 订阅位置，如果达到, 停止 debezium 继续订阅
+     * </pre>
+     */
     public void dispatchWatermarkEvent(
             MySqlSplit mySqlSplit, BinlogOffset watermark, WatermarkKind watermarkKind)
             throws InterruptedException {

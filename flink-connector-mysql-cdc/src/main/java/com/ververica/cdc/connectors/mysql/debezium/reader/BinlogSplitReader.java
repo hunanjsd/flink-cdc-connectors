@@ -65,15 +65,21 @@ import static com.ververica.cdc.connectors.mysql.source.utils.RecordUtils.isData
 public class BinlogSplitReader implements DebeziumReader<SourceRecord, MySqlSplit> {
 
     private static final Logger LOG = LoggerFactory.getLogger(BinlogSplitReader.class);
+    // context 里面保存了很多对象, 例如 queue
     private final StatefulTaskContext statefulTaskContext;
     private final ExecutorService executor;
 
+    // change event 发布队列
     private volatile ChangeEventQueue<DataChangeEvent> queue;
+    // 标记 reader 是否正在运行
     private volatile boolean currentTaskRunning;
     private volatile Throwable readException;
 
+    // debezium 中正则运行监听 binlog 的 task
     private MySqlBinlogSplitReadTask binlogSplitReadTask;
+    // 这个 split reader 的分片信息， 包含 binlog 的 start/end pos 信息
     private MySqlBinlogSplit currentBinlogSplit;
+    // 这个对象是可以被重用的, 可按顺序处理多个 MySqlSplit 任务
     private Map<TableId, List<FinishedSnapshotSplitInfo>> finishedSplitsInfo;
     // tableId -> the max splitHighWatermark
     private Map<TableId, BinlogOffset> maxSplitHighWatermarkMap;
@@ -83,13 +89,19 @@ public class BinlogSplitReader implements DebeziumReader<SourceRecord, MySqlSpli
         this.statefulTaskContext = statefulTaskContext;
         ThreadFactory threadFactory =
                 new ThreadFactoryBuilder().setNameFormat("debezium-reader-" + subTaskId).build();
+        // 单线程的 executor
         this.executor = Executors.newSingleThreadExecutor(threadFactory);
         this.currentTaskRunning = true;
     }
 
+    /**
+     * 在 {@link com.ververica.cdc.connectors.mysql.source.reader.MySqlSplitReader} 中提交 split 然后执行
+     */
     public void submitSplit(MySqlSplit mySqlSplit) {
         this.currentBinlogSplit = mySqlSplit.asBinlogSplit();
+        // 好烦这种写代码的, 中间插一段, 狗屁不通
         configureFilter();
+        // 这里的 configure 也是非常重要的逻辑, 例如创建 queue, 不过这里的代码写的真垃圾
         statefulTaskContext.configure(currentBinlogSplit);
         this.capturedTableFilter =
                 statefulTaskContext.getConnectorConfig().getTableFilters().dataCollectionFilter();
@@ -112,6 +124,8 @@ public class BinlogSplitReader implements DebeziumReader<SourceRecord, MySqlSpli
         executor.submit(
                 () -> {
                     try {
+                        // 传进去的 BinlogSplitChangeEventSourceContextImpl 里面有 running 的 flag,
+                        // 支持在外面改变变量进而停止里面的任务
                         binlogSplitReadTask.execute(new BinlogSplitChangeEventSourceContextImpl());
                     } catch (Exception e) {
                         currentTaskRunning = false;
@@ -144,6 +158,7 @@ public class BinlogSplitReader implements DebeziumReader<SourceRecord, MySqlSpli
         checkReadException();
         final List<SourceRecord> sourceRecords = new ArrayList<>();
         if (currentTaskRunning) {
+            // 这里的 queue 就是 EventDispatcherImpl 里面的 queue
             List<DataChangeEvent> batch = queue.poll();
             for (DataChangeEvent event : batch) {
                 if (shouldEmit(event.getRecord())) {

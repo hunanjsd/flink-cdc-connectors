@@ -101,7 +101,6 @@ public class StatefulTaskContext {
     public void configure(MySqlSplit mySqlSplit) {
         // initial stateful objects
         final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
-        // 配置 table 过滤条件
         this.topicSelector = MySqlTopicSelector.defaultSelector(connectorConfig);
         EmbeddedFlinkDatabaseHistory.registerHistory(
                 sourceConfig

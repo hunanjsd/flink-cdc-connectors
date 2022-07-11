@@ -45,7 +45,12 @@ import static com.ververica.cdc.connectors.mysql.source.assigners.AssignerStatus
 
 /**
  * A {@link MySqlSplitAssigner} that splits tables into small chunk splits based on primary key
- * range and chunk size and also continue with a binlog split.
+ * range and chunk size and also continue with a binlog split. 分配策略:
+ *
+ * <pre>
+ *   1. 分配 snapshot table split
+ *   2. 分配 binlog split(只分配一次)
+ * </pre>
  */
 public class MySqlHybridSplitAssigner implements MySqlSplitAssigner {
 
@@ -54,8 +59,10 @@ public class MySqlHybridSplitAssigner implements MySqlSplitAssigner {
 
     private final int splitMetaGroupSize;
 
+    // 标记 binlog 是否已经分配
     private boolean isBinlogSplitAssigned;
 
+    // 内部包含的一个 snapshot assigner 对象
     private final MySqlSnapshotSplitAssigner snapshotSplitAssigner;
 
     public MySqlHybridSplitAssigner(
@@ -92,6 +99,7 @@ public class MySqlHybridSplitAssigner implements MySqlSplitAssigner {
 
     @Override
     public void open() {
+        // 先初始化 snapshot 数据
         snapshotSplitAssigner.open();
     }
 
@@ -102,6 +110,7 @@ public class MySqlHybridSplitAssigner implements MySqlSplitAssigner {
             return Optional.empty();
         }
         if (snapshotSplitAssigner.noMoreSplits()) {
+            // snapshot table 和 table split 都执行完了, 说明 snapshot 初始化结束了
             // binlog split assigning
             if (isBinlogSplitAssigned) {
                 // no more splits for the assigner
@@ -188,12 +197,15 @@ public class MySqlHybridSplitAssigner implements MySqlSplitAssigner {
 
     // --------------------------------------------------------------------------------------------
 
+    /** snapshot 初始化完成后, 创建 binlog split 对象 */
     private MySqlBinlogSplit createBinlogSplit() {
+        // 根据 split 进行排序
         final List<MySqlSnapshotSplit> assignedSnapshotSplit =
                 snapshotSplitAssigner.getAssignedSplits().values().stream()
                         .sorted(Comparator.comparing(MySqlSplit::splitId))
                         .collect(Collectors.toList());
 
+        // 获取所有已经完成且上报 enumerator 且 ack 的 binlog offset
         Map<String, BinlogOffset> splitFinishedOffsets =
                 snapshotSplitAssigner.getSplitFinishedOffsets();
         final List<FinishedSnapshotSplitInfo> finishedSnapshotSplitInfos = new ArrayList<>();
@@ -218,6 +230,7 @@ public class MySqlHybridSplitAssigner implements MySqlSplitAssigner {
         // then transfer them
 
         boolean divideMetaToGroups = finishedSnapshotSplitInfos.size() > splitMetaGroupSize;
+        // 从最小的 binlog 开始拉数据
         return new MySqlBinlogSplit(
                 BINLOG_SPLIT_ID,
                 minBinlogOffset == null ? BinlogOffset.INITIAL_OFFSET : minBinlogOffset,

@@ -38,6 +38,7 @@ public interface MySqlSplitAssigner {
 
     /**
      * Called to open the assigner to acquire any resources, like threads or network connections.
+     * assigner 启动的时候对表进行 split 切分
      */
     void open();
 
@@ -69,7 +70,8 @@ public interface MySqlSplitAssigner {
 
     /**
      * Adds a set of splits to this assigner. This happens for example when some split processing
-     * failed and the splits need to be re-added.
+     * failed and the splits need to be re-added. 理论上 split 都是 assigner 产生的, 除非某些特殊情况才从外界调用
+     * addSplits 函数
      */
     void addSplits(Collection<MySqlSplit> splits);
 

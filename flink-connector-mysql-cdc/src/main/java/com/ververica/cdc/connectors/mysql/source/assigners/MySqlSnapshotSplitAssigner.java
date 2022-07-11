@@ -147,7 +147,7 @@ public class MySqlSnapshotSplitAssigner implements MySqlSplitAssigner {
 
     @Override
     public void open() {
-        // source split 切片器
+        // 创建 source split 切片器
         chunkSplitter = createChunkSplitter(sourceConfig, isTableIdCaseSensitive);
 
         // the legacy state didn't snapshot remaining tables, discovery remaining table here

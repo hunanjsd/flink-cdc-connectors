@@ -22,14 +22,18 @@ import javax.annotation.Nullable;
 
 import java.util.Iterator;
 
-/** Reader to read split of table, the split is either snapshot split or binlog split. */
+/**
+ * 作用: 存活在 tm 的 MySqlSplitReader 中, 这应该是一个很底层的 debezium reader 为何放在 mysql-cdc 模块 Reader to read
+ * split of table, the split is either snapshot split or binlog split.
+ */
 public interface DebeziumReader<T, Split> {
 
     /** Return the current split of the reader is finished or not. */
     boolean isFinished();
 
     /**
-     * Add to split to read, this should call only the when reader is idle.
+     * Add to split to read, this should call only the when reader is idle. 空闲的判断标志是上面 isFinished
+     * 函数返回 true, 提交具体的 task, 例如 snapshot split、binlog read task 等等
      *
      * @param splitToRead
      */
@@ -39,8 +43,9 @@ public interface DebeziumReader<T, Split> {
     void close();
 
     /**
-     * Reads records from MySQL. The method should return null when reaching the end of the split,
-     * the empty {@link Iterator} will be returned if the data of split is on pulling.
+     * 都是从 EventDispatcherImpl 里面的 queue 拉取数据 Reads records from MySQL. The method should return
+     * null when reaching the end of the split, the empty {@link Iterator} will be returned if the
+     * data of split is on pulling.
      */
     @Nullable
     Iterator<T> pollSplitRecords() throws InterruptedException;

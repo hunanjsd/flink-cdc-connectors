@@ -18,13 +18,16 @@
 
 package com.ververica.cdc.connectors.mysql.debezium.dispatcher;
 
+import com.ververica.cdc.connectors.mysql.debezium.task.MySqlSnapshotSplitReadTask;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.mysql.MySqlStreamingChangeEventSource;
 import io.debezium.document.DocumentWriter;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.ChangeEventCreator;
+import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.schema.DataCollectionFilters;
@@ -52,12 +55,15 @@ import static com.ververica.cdc.connectors.mysql.debezium.task.context.StatefulT
 
 /**
  * A subclass implementation of {@link EventDispatcher}.
+ *
  * <pre>
  *  1. This class shares one {@link ChangeEventQueue} between multiple readers.
  *  2. This class override some methods for dispatching {@link HistoryRecord} directly,
  *     this is useful for downstream to deserialize the {@link HistoryRecord} back.
  * </pre>
+ *
  * 疑问
+ *
  * <pre>
  *  1. dispatch 何时被创建
  *  2. 数据写入到 queue, 如何被下游读取
@@ -71,10 +77,30 @@ public class EventDispatcherImpl<T extends DataCollectionId> extends EventDispat
     public static final String HISTORY_RECORD_FIELD = "historyRecord";
     private static final DocumentWriter DOCUMENT_WRITER = DocumentWriter.defaultWriter();
 
-    // queue 存储的 DataChangeEvent 是具体的单条变更数据
+    /**
+     * queue 存储的 DataChangeEvent 是具体的单条变更数据, 变更数据类型
+     *
+     * <pre>
+     *     1. schema change 变更记录, 参考下面变量: dispatchSchemaChangeEvent
+     *     2. watermark 数据, 参考下面的 getQueue() 函数
+     *     3. snapshot 数据, 参考 {@link MySqlSnapshotSplitReadTask#createDataEventsForTable} 调用的是父类的 dispatchSnapshotEvent 函数
+     *     4. binlog 订阅数据, 参考 {@link MySqlStreamingChangeEventSource} handle insert/update event 的时候，调用的是父类的 dispatchDataChangeEvent 函数
+     * </pre>
+     */
     private final ChangeEventQueue<DataChangeEvent> queue;
+
     private final HistorizedDatabaseSchema historizedSchema;
+    /**
+     * 对象使用场景:
+     *
+     * <pre>
+     *     1. {@link EventDispatcher#dispatchDataChangeEvent(DataCollectionId, ChangeRecordEmitter)} 在 dispatch change data 前会被调用, 判断是否为订阅的目标表
+     *     2. {@link EventDispatcherImpl#dispatchSchemaChangeEvent(DataCollectionId, SchemaChangeEventEmitter))} 在 dispatch schema change 前会被调用, 判断是否为订阅的目标表
+     * </pre>
+     */
+    // table 过滤器, 包含 include table 的内容
     private final DataCollectionFilters.DataCollectionFilter<T> filter;
+
     private final CommonConnectorConfig connectorConfig;
     private final TopicSelector<T> topicSelector;
     private final Schema schemaChangeKeySchema;
@@ -129,6 +155,7 @@ public class EventDispatcherImpl<T extends DataCollectionId> extends EventDispat
                         .build();
     }
 
+    /** getQueue 函数目的是将当前 dispatch 中的 queue 在 SignalEventDispatch 进行共享 */
     public ChangeEventQueue<DataChangeEvent> getQueue() {
         return queue;
     }
@@ -137,6 +164,7 @@ public class EventDispatcherImpl<T extends DataCollectionId> extends EventDispat
     public void dispatchSchemaChangeEvent(
             T dataCollectionId, SchemaChangeEventEmitter schemaChangeEventEmitter)
             throws InterruptedException {
+        // 注意到 filter 的作用就是判断 change event 是否是自己订阅的表, 否则不管
         if (dataCollectionId != null && !filter.isIncluded(dataCollectionId)) {
             if (historizedSchema == null || historizedSchema.storeOnlyMonitoredTables()) {
                 LOG.trace("Filtering schema change event for {}", dataCollectionId);

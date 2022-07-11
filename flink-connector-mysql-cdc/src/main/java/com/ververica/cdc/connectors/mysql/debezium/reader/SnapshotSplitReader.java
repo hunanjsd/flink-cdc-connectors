@@ -114,10 +114,11 @@ public class SnapshotSplitReader implements DebeziumReader<SourceRecord, MySqlSp
                         // execute snapshot read task
                         final SnapshotSplitChangeEventSourceContextImpl sourceContext =
                                 new SnapshotSplitChangeEventSourceContextImpl();
-                        // sourceContext 里面存储低水位和高水位
+                        // 非常重要: 执行 snapshot 具体的实现逻辑, sourceContext 里面存储低水位和高水位
                         SnapshotResult snapshotResult =
                                 splitSnapshotReadTask.execute(sourceContext);
 
+                        // 填充的是在 snapshot 节点 binlog offset 和结束阶段的 binlog offset
                         final MySqlBinlogSplit backfillBinlogSplit =
                                 createBackfillBinlogSplit(sourceContext);
                         // optimization that skip the binlog read when the low watermark equals high
@@ -134,8 +135,10 @@ public class SnapshotSplitReader implements DebeziumReader<SourceRecord, MySqlSp
 
                         // execute binlog read task
                         if (snapshotResult.isCompletedOrSkipped()) {
+                            // 启动 binlog read 任务, 这里的 binlog 是指定了拉取的开始、结束位置
                             final MySqlBinlogSplitReadTask backfillBinlogReadTask =
                                     createBackfillBinlogReadTask(backfillBinlogSplit);
+                            // 执行任务
                             backfillBinlogReadTask.execute(
                                     new SnapshotBinlogSplitChangeEventSourceContextImpl());
                         } else {
