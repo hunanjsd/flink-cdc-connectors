@@ -32,6 +32,7 @@ import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 import org.apache.flink.connector.base.source.reader.synchronization.FutureCompletingBlockingQueue;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.metrics.MetricGroup;
+import org.apache.flink.runtime.source.coordinator.SourceCoordinatorContext;
 import org.apache.flink.util.FlinkRuntimeException;
 
 import com.ververica.cdc.connectors.mysql.MySqlValidator;
@@ -168,7 +169,9 @@ public class MySqlSource<T>
                 sourceConfig);
     }
 
-    /** 这个推测是 jm 调用. 创建 SplitEnumerator，开启一个新的输入. */
+    /** 这个推测是 jm 调用. 创建 SplitEnumerator，开启一个新的输入.
+     * @param enumContext 为 {@link SourceCoordinatorContext} 对象
+     * */
     @Override
     public SplitEnumerator<MySqlSplit, PendingSplitsState> createEnumerator(
             SplitEnumeratorContext<MySqlSplit> enumContext) {

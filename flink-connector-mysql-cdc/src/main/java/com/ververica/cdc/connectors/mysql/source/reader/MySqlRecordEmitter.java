@@ -135,6 +135,7 @@ public final class MySqlRecordEmitter<T>
         }
     }
 
+
     private static class OutputCollector<T> implements Collector<T> {
         private SourceOutput<T> output;
 

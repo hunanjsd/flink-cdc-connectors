@@ -47,6 +47,10 @@ public class MySqlSourceReaderMetrics {
      */
     private volatile long emitDelay = 0L;
 
+    private volatile long sourceSplitSize = 0L;
+
+    private volatile long sourceSplitFinishedSize = 0L;
+
     public MySqlSourceReaderMetrics(MetricGroup metricGroup) {
         this.metricGroup = metricGroup;
     }
@@ -55,6 +59,8 @@ public class MySqlSourceReaderMetrics {
         metricGroup.gauge("currentFetchEventTimeLag", (Gauge<Long>) this::getFetchDelay);
         metricGroup.gauge("currentEmitEventTimeLag", (Gauge<Long>) this::getEmitDelay);
         metricGroup.gauge("sourceIdleTime", (Gauge<Long>) this::getIdleTime);
+        metricGroup.gauge("sourceSplitSize", (Gauge<Long>) this::getIdleTime);
+        metricGroup.gauge("sourceSplitFinishedSize", (Gauge<Long>) this::getIdleTime);
     }
 
     public long getFetchDelay() {
@@ -83,5 +89,11 @@ public class MySqlSourceReaderMetrics {
 
     public void recordEmitDelay(long emitDelay) {
         this.emitDelay = emitDelay;
+    }
+    public void recordSourceSplitSize(long sourceSplitSize) {
+        this.sourceSplitSize = sourceSplitSize;
+    }
+    public void recordSourceSplitFinishedSize(long sourceSplitFinishedSize) {
+        this.sourceSplitFinishedSize = sourceSplitFinishedSize;
     }
 }
