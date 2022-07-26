@@ -18,6 +18,7 @@
 
 package com.ververica.cdc.connectors.mysql.source.reader;
 
+import com.ververica.cdc.connectors.mysql.source.metrics.MySqlSourceSyncMonitorMetrics;
 import org.apache.flink.api.connector.source.SourceEvent;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.base.source.reader.RecordEmitter;
@@ -25,6 +26,7 @@ import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 import org.apache.flink.connector.base.source.reader.SingleThreadMultiplexSourceReaderBase;
 import org.apache.flink.connector.base.source.reader.fetcher.SingleThreadFetcherManager;
 import org.apache.flink.connector.base.source.reader.synchronization.FutureCompletingBlockingQueue;
+import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.util.FlinkRuntimeException;
 
 import com.ververica.cdc.connectors.mysql.debezium.DebeziumUtils;
@@ -36,6 +38,7 @@ import com.ververica.cdc.connectors.mysql.source.events.FinishedSnapshotSplitsRe
 import com.ververica.cdc.connectors.mysql.source.events.FinishedSnapshotSplitsRequestEvent;
 import com.ververica.cdc.connectors.mysql.source.events.LatestFinishedSplitsSizeEvent;
 import com.ververica.cdc.connectors.mysql.source.events.LatestFinishedSplitsSizeRequestEvent;
+import com.ververica.cdc.connectors.mysql.source.events.ReportMetricsSplitFinishedStatusEvent;
 import com.ververica.cdc.connectors.mysql.source.events.SuspendBinlogReaderAckEvent;
 import com.ververica.cdc.connectors.mysql.source.events.SuspendBinlogReaderEvent;
 import com.ververica.cdc.connectors.mysql.source.events.WakeupReaderEvent;
@@ -55,6 +58,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -84,6 +88,8 @@ public class MySqlSourceReader<T>
     private final MySqlSourceReaderContext mySqlSourceReaderContext;
     private MySqlBinlogSplit suspendedBinlogSplit;
 
+    private MySqlSourceSyncMonitorMetrics sourceSyncMonitorMetrics;
+
     public MySqlSourceReader(
             FutureCompletingBlockingQueue<RecordsWithSplitIds<SourceRecord>> elementQueue,
             Supplier<MySqlSplitReader> splitReaderSupplier,
@@ -103,12 +109,29 @@ public class MySqlSourceReader<T>
         this.subtaskId = context.getSourceReaderContext().getIndexOfSubtask();
         this.mySqlSourceReaderContext = context;
         this.suspendedBinlogSplit = null;
+        initSourceSyncMonitorMetrics();
     }
 
     @Override
     public void start() {
         if (getNumberOfCurrentlyAssignedSplits() == 0) {
             context.sendSplitRequest();
+        }
+    }
+
+    /**
+     * 注册 source mysql 同步监控 metrics 指标
+     */
+    private void initSourceSyncMonitorMetrics(){
+        final MetricGroup metricGroup;
+        try {
+            final Method metricGroupMethod = mySqlSourceReaderContext.getSourceReaderContext().getClass().getMethod("metricGroup");
+            metricGroupMethod.setAccessible(true);
+            metricGroup = (MetricGroup) metricGroupMethod.invoke(mySqlSourceReaderContext.getSourceReaderContext());
+            sourceSyncMonitorMetrics = new MySqlSourceSyncMonitorMetrics(metricGroup);
+            sourceSyncMonitorMetrics.registerMetrics();
+        } catch (Exception e) {
+            throw new RuntimeException("Fail to init source sync monitor metrics !");
         }
     }
 
@@ -266,6 +289,10 @@ public class MySqlSourceReader<T>
                 suspendedBinlogSplit = null;
                 this.addSplits(Collections.singletonList(binlogSplit));
             }
+        } else if (sourceEvent instanceof ReportMetricsSplitFinishedStatusEvent) {
+            ReportMetricsSplitFinishedStatusEvent metricsSplitFinishedStatusEvent = (ReportMetricsSplitFinishedStatusEvent)sourceEvent;
+            sourceSyncMonitorMetrics.recordSourceSplitFinishedSize(metricsSplitFinishedStatusEvent.getFinishedSplitSize());
+            sourceSyncMonitorMetrics.recordSourceSplitTotalSize(metricsSplitFinishedStatusEvent.getTotalSplitSize());
         } else {
             super.handleSourceEvents(sourceEvent);
         }

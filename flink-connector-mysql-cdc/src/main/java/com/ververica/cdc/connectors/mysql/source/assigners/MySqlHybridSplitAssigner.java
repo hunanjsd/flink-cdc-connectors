@@ -226,4 +226,8 @@ public class MySqlHybridSplitAssigner implements MySqlSplitAssigner {
                 new HashMap<>(),
                 finishedSnapshotSplitInfos.size());
     }
+
+    public MySqlSnapshotSplitAssigner getSnapshotSplitAssigner() {
+        return snapshotSplitAssigner;
+    }
 }

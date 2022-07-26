@@ -18,6 +18,8 @@
 
 package com.ververica.cdc.connectors.mysql.source.enumerator;
 
+import com.ververica.cdc.connectors.mysql.source.assigners.MySqlSnapshotSplitAssigner;
+import com.ververica.cdc.connectors.mysql.source.events.ReportMetricsSplitFinishedStatusEvent;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.connector.source.SourceEvent;
 import org.apache.flink.api.connector.source.SplitEnumerator;
@@ -153,6 +155,7 @@ public class MySqlSourceEnumerator implements SplitEnumerator<MySqlSplit, Pendin
             FinishedSnapshotSplitsAckEvent ackEvent =
                     new FinishedSnapshotSplitsAckEvent(new ArrayList<>(finishedOffsets.keySet()));
             context.sendEventToSourceReader(subtaskId, ackEvent);
+            sendSyncMetricsToReaderIfNeed();
         } else if (sourceEvent instanceof BinlogSplitMetaRequestEvent) {
             LOG.debug(
                     "The enumerator receives request for binlog split meta from subtask {}.",
@@ -257,6 +260,25 @@ public class MySqlSourceEnumerator implements SplitEnumerator<MySqlSplit, Pendin
             binlogReaderIsSuspended = false;
         }
     }
+
+    private void sendSyncMetricsToReaderIfNeed() {
+        if (!isAssigningFinished(splitAssigner.getAssignerStatus())) {
+            if(splitAssigner instanceof MySqlSnapshotSplitAssigner){
+                sendSyncMetricsToReader((MySqlSnapshotSplitAssigner) splitAssigner);
+            } else if (splitAssigner instanceof MySqlHybridSplitAssigner) {
+                sendSyncMetricsToReader(((MySqlHybridSplitAssigner) splitAssigner).getSnapshotSplitAssigner());
+            }
+        }
+    }
+
+    private void sendSyncMetricsToReader(MySqlSnapshotSplitAssigner mySqlSnapshotSplitAssigner){
+        for (int subtaskId : getRegisteredReader()) {
+            context.sendEventToSourceReader(
+                    subtaskId, new ReportMetricsSplitFinishedStatusEvent(mySqlSnapshotSplitAssigner.getSplitFinishedSize(),
+                            mySqlSnapshotSplitAssigner.getSplitTotalSize()));
+        }
+    }
+
 
     private void sendBinlogMeta(int subTask, BinlogSplitMetaRequestEvent requestEvent) {
         // initialize once

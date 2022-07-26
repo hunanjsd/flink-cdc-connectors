@@ -383,6 +383,14 @@ public class MySqlSnapshotSplitAssigner implements MySqlSplitAssigner {
         return noMoreSplits() && assignedSplits.size() == splitFinishedOffsets.size();
     }
 
+    public Integer getSplitFinishedSize(){
+        return splitFinishedOffsets.size();
+    }
+
+    public Integer getSplitTotalSize(){
+        return remainingSplits.size() + splitFinishedOffsets.size();
+    }
+
     private void splitChunksForRemainingTables() {
         try {
             for (TableId nextTable : remainingTables) {
