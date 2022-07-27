@@ -19,6 +19,7 @@
 package com.ververica.cdc.connectors.mysql.source.enumerator;
 
 import com.ververica.cdc.connectors.mysql.source.assigners.MySqlSnapshotSplitAssigner;
+import com.ververica.cdc.connectors.mysql.source.events.ReportMetricsBinlogSyncStatusEvent;
 import com.ververica.cdc.connectors.mysql.source.events.ReportMetricsSplitFinishedStatusEvent;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.connector.source.SourceEvent;
@@ -155,7 +156,8 @@ public class MySqlSourceEnumerator implements SplitEnumerator<MySqlSplit, Pendin
             FinishedSnapshotSplitsAckEvent ackEvent =
                     new FinishedSnapshotSplitsAckEvent(new ArrayList<>(finishedOffsets.keySet()));
             context.sendEventToSourceReader(subtaskId, ackEvent);
-            sendSyncMetricsToReaderIfNeed();
+            // send snapshot metrics report request
+            sendSnapShotMetricsToReaderIfNeed();
         } else if (sourceEvent instanceof BinlogSplitMetaRequestEvent) {
             LOG.debug(
                     "The enumerator receives request for binlog split meta from subtask {}.",
@@ -239,6 +241,7 @@ public class MySqlSourceEnumerator implements SplitEnumerator<MySqlSplit, Pendin
 
         suspendBinlogReaderIfNeed();
         wakeupBinlogReaderIfNeed();
+        sendBinlogSyncMetricsToReaderIfNeed();
     }
 
     private void suspendBinlogReaderIfNeed() {
@@ -261,7 +264,17 @@ public class MySqlSourceEnumerator implements SplitEnumerator<MySqlSplit, Pendin
         }
     }
 
-    private void sendSyncMetricsToReaderIfNeed() {
+    private void sendBinlogSyncMetricsToReaderIfNeed() {
+        if(!binlogReaderIsSuspended){
+            for (int subtaskId : getRegisteredReader()) {
+                context.sendEventToSourceReader(
+                        subtaskId, new ReportMetricsBinlogSyncStatusEvent());
+            }
+        }
+    }
+
+
+    private void sendSnapShotMetricsToReaderIfNeed() {
         if (!isAssigningFinished(splitAssigner.getAssignerStatus())) {
             if(splitAssigner instanceof MySqlSnapshotSplitAssigner){
                 sendSyncMetricsToReader((MySqlSnapshotSplitAssigner) splitAssigner);

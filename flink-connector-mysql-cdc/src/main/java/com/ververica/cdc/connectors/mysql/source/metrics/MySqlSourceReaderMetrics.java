@@ -47,6 +47,14 @@ public class MySqlSourceReaderMetrics {
      */
     private volatile long emitDelay = 0L;
 
+    private volatile long sourceSplitTotalSize = 0L;
+
+    private volatile long sourceSplitFinishedSize = 0L;
+
+    private volatile long sourceCurrentBinlogFilePos;
+
+    private volatile long sourceProcessBinlogFilePos;
+
     public MySqlSourceReaderMetrics(MetricGroup metricGroup) {
         this.metricGroup = metricGroup;
     }
@@ -55,6 +63,11 @@ public class MySqlSourceReaderMetrics {
         metricGroup.gauge("currentFetchEventTimeLag", (Gauge<Long>) this::getFetchDelay);
         metricGroup.gauge("currentEmitEventTimeLag", (Gauge<Long>) this::getEmitDelay);
         metricGroup.gauge("sourceIdleTime", (Gauge<Long>) this::getIdleTime);
+        metricGroup.gauge("sourceSplitSize", (Gauge<Long>) this::getSourceSplitTotalSize);
+        metricGroup.gauge("sourceSplitFinishedSize", (Gauge<Long>) this::getSourceSplitFinishedSize);
+        metricGroup.gauge("sourceCurrentBinlogFilePos", (Gauge<Long>) this::getSourceCurrentBinlogFilePos);
+        metricGroup.gauge("sourceProcessBinlogFilePos", (Gauge<Long>) this::getSourceProcessBinlogFilePos);
+
     }
 
     public long getFetchDelay() {
@@ -73,6 +86,23 @@ public class MySqlSourceReaderMetrics {
         return System.currentTimeMillis() - processTime;
     }
 
+
+    public long getSourceSplitTotalSize() {
+        return sourceSplitTotalSize;
+    }
+
+    public long getSourceSplitFinishedSize() {
+        return sourceSplitFinishedSize;
+    }
+
+    public long getSourceCurrentBinlogFilePos() {
+        return sourceCurrentBinlogFilePos;
+    }
+
+    public long getSourceProcessBinlogFilePos() {
+        return sourceProcessBinlogFilePos;
+    }
+
     public void recordProcessTime(long processTime) {
         this.processTime = processTime;
     }
@@ -83,5 +113,22 @@ public class MySqlSourceReaderMetrics {
 
     public void recordEmitDelay(long emitDelay) {
         this.emitDelay = emitDelay;
+    }
+
+    public void recordSourceSplitTotalSize(long sourceSplitSize) {
+        this.sourceSplitTotalSize = sourceSplitSize;
+    }
+
+    public void recordSourceSplitFinishedSize(long sourceSplitFinishedSize) {
+        this.sourceSplitFinishedSize = sourceSplitFinishedSize;
+    }
+
+
+    public void recordSourceCurrentBinlogFilePos(long sourceCurrentBinlogFilePos) {
+        this.sourceCurrentBinlogFilePos = sourceCurrentBinlogFilePos;
+    }
+
+    public void recordSourceProcessBinlogFilePos(long sourceProcessBinlogFilePos) {
+        this.sourceProcessBinlogFilePos = sourceProcessBinlogFilePos;
     }
 }

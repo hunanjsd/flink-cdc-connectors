@@ -253,11 +253,12 @@ public class MySqlSourceReaderTest extends MySqlSourceTestBase {
         final Method metricGroupMethod = readerContext.getClass().getMethod("metricGroup");
         metricGroupMethod.setAccessible(true);
         final MetricGroup metricGroup = (MetricGroup) metricGroupMethod.invoke(readerContext);
-
+        MySqlSourceReaderMetrics mySqlSourceReaderMetrics = new MySqlSourceReaderMetrics(metricGroup);
+        mySqlSourceReaderMetrics.registerMetrics();
         final MySqlRecordEmitter<SourceRecord> recordEmitter =
                 new MySqlRecordEmitter<>(
                         new ForwardDeserializeSchema(),
-                        new MySqlSourceReaderMetrics(metricGroup),
+                        mySqlSourceReaderMetrics,
                         configuration.isIncludeSchemaChanges());
         final MySqlSourceReaderContext mySqlSourceReaderContext =
                 new MySqlSourceReaderContext(readerContext);
@@ -267,7 +268,8 @@ public class MySqlSourceReaderTest extends MySqlSourceTestBase {
                 recordEmitter,
                 readerContext.getConfiguration(),
                 mySqlSourceReaderContext,
-                configuration);
+                configuration,
+                mySqlSourceReaderMetrics);
     }
 
     private MySqlSplitReader createSplitReader(
