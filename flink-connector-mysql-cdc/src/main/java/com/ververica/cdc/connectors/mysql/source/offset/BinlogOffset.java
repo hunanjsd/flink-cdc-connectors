@@ -94,6 +94,13 @@ public class BinlogOffset implements Comparable<BinlogOffset>, Serializable {
         return offset.get(BINLOG_FILENAME_OFFSET_KEY);
     }
 
+    /** 解析 mysql binlog 文件, 获取后缀序好 */
+    public Long getFilenameSerialNum() {
+        String fileName = offset.get(BINLOG_FILENAME_OFFSET_KEY);
+        String[] fileNameWithNumber = fileName.split("\\.");
+        return fileNameWithNumber.length > 1 ? Long.parseLong(fileNameWithNumber[1]) : 1L;
+    }
+
     public long getPosition() {
         return longOffsetValue(offset, BINLOG_POSITION_OFFSET_KEY);
     }

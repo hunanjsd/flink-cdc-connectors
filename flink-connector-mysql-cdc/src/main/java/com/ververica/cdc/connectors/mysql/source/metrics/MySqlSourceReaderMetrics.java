@@ -51,9 +51,12 @@ public class MySqlSourceReaderMetrics {
 
     private volatile long sourceSplitFinishedSize = 0L;
 
-    private volatile long sourceCurrentBinlogFilePos;
-
-    private volatile long sourceProcessBinlogFilePos;
+    private volatile long sourceCurrentBinlogFileSerialNum = 0L;
+    private volatile long sourceCurrentBinlogFilePos = 0L;
+    private volatile long taskProcessedBinlogFileSerialNum = 0L;
+    private volatile long taskProcessedBinlogFilePos = 0L;
+    private volatile long sourceBinlogSyncLag = 0L;
+    private volatile long sourceMaxBinlogSize = 0L;
 
     public MySqlSourceReaderMetrics(MetricGroup metricGroup) {
         this.metricGroup = metricGroup;
@@ -63,11 +66,24 @@ public class MySqlSourceReaderMetrics {
         metricGroup.gauge("currentFetchEventTimeLag", (Gauge<Long>) this::getFetchDelay);
         metricGroup.gauge("currentEmitEventTimeLag", (Gauge<Long>) this::getEmitDelay);
         metricGroup.gauge("sourceIdleTime", (Gauge<Long>) this::getIdleTime);
-        metricGroup.gauge("sourceSplitSize", (Gauge<Long>) this::getSourceSplitTotalSize);
-        metricGroup.gauge("sourceSplitFinishedSize", (Gauge<Long>) this::getSourceSplitFinishedSize);
-        metricGroup.gauge("sourceCurrentBinlogFilePos", (Gauge<Long>) this::getSourceCurrentBinlogFilePos);
-        metricGroup.gauge("sourceProcessBinlogFilePos", (Gauge<Long>) this::getSourceProcessBinlogFilePos);
 
+        // source snapshot 阶段监控 metrics
+        metricGroup.gauge("sourceSplitSize", (Gauge<Long>) this::getSourceSplitTotalSize);
+        metricGroup.gauge(
+                "sourceSplitFinishedSize", (Gauge<Long>) this::getSourceSplitFinishedSize);
+
+        // source binlog 同步阶段监控 metrics
+        metricGroup.gauge(
+                "sourceCurrentBinlogFileSerialNum",
+                (Gauge<Long>) this::getSourceCurrentBinlogFileSerialNum);
+        metricGroup.gauge(
+                "sourceCurrentBinlogFilePos", (Gauge<Long>) this::getSourceCurrentBinlogFilePos);
+        metricGroup.gauge(
+                "taskProcessedBinlogFileSerialNum",
+                (Gauge<Long>) this::getTaskProcessedBinlogFileSerialNum);
+        metricGroup.gauge(
+                "taskProcessedBinlogFilePos", (Gauge<Long>) this::getTaskProcessedBinlogFilePos);
+        metricGroup.gauge("sourceBinlogSyncLag", (Gauge<Long>) this::getSourceBinlogSyncLag);
     }
 
     public long getFetchDelay() {
@@ -86,7 +102,6 @@ public class MySqlSourceReaderMetrics {
         return System.currentTimeMillis() - processTime;
     }
 
-
     public long getSourceSplitTotalSize() {
         return sourceSplitTotalSize;
     }
@@ -99,8 +114,24 @@ public class MySqlSourceReaderMetrics {
         return sourceCurrentBinlogFilePos;
     }
 
-    public long getSourceProcessBinlogFilePos() {
-        return sourceProcessBinlogFilePos;
+    public long getSourceCurrentBinlogFileSerialNum() {
+        return sourceCurrentBinlogFileSerialNum;
+    }
+
+    public long getTaskProcessedBinlogFileSerialNum() {
+        return taskProcessedBinlogFileSerialNum;
+    }
+
+    public long getTaskProcessedBinlogFilePos() {
+        return taskProcessedBinlogFilePos;
+    }
+
+    public long getSourceBinlogSyncLag() {
+        sourceBinlogSyncLag =
+                (sourceCurrentBinlogFileSerialNum - taskProcessedBinlogFileSerialNum)
+                                * sourceMaxBinlogSize
+                        + (sourceCurrentBinlogFilePos - taskProcessedBinlogFilePos);
+        return sourceBinlogSyncLag;
     }
 
     public void recordProcessTime(long processTime) {
@@ -123,12 +154,27 @@ public class MySqlSourceReaderMetrics {
         this.sourceSplitFinishedSize = sourceSplitFinishedSize;
     }
 
-
-    public void recordSourceCurrentBinlogFilePos(long sourceCurrentBinlogFilePos) {
+    public void recordSourceCurrentBinlogFileSerialNumAndPos(
+            long sourceCurrentBinlogFileSerialNum, long sourceCurrentBinlogFilePos) {
+        this.sourceCurrentBinlogFileSerialNum = sourceCurrentBinlogFileSerialNum;
         this.sourceCurrentBinlogFilePos = sourceCurrentBinlogFilePos;
     }
 
-    public void recordSourceProcessBinlogFilePos(long sourceProcessBinlogFilePos) {
-        this.sourceProcessBinlogFilePos = sourceProcessBinlogFilePos;
+    public void recordTaskProcessedBinlogFileSerialNumAndPos(
+            long taskProcessedBinlogFileSerialNum, long taskProcessedBinlogFilePos) {
+        this.taskProcessedBinlogFileSerialNum = taskProcessedBinlogFileSerialNum;
+        this.taskProcessedBinlogFilePos = taskProcessedBinlogFilePos;
+    }
+
+    public void recordMaxBinlogSize(long sourceMaxBinlogSize) {
+        this.sourceMaxBinlogSize = sourceMaxBinlogSize;
+    }
+
+    public void resetBinlogSyncMetrics(){
+        this.sourceCurrentBinlogFileSerialNum = 0L;
+        this.sourceCurrentBinlogFilePos = 0L;
+        this.taskProcessedBinlogFileSerialNum = 0;
+        this.taskProcessedBinlogFilePos = 0;
+        this.sourceBinlogSyncLag = 0L;
     }
 }

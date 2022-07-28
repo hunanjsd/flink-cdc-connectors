@@ -54,7 +54,7 @@ public class MySqlSourceExampleTest extends MySqlSourceTestBase {
         env.enableCheckpointing(3000);
         // set the source parallelism to 4
         env.fromSource(mySqlSource, WatermarkStrategy.noWatermarks(), "MySqlParallelSource")
-                .setParallelism(4)
+                .setParallelism(1)
                 .print()
                 .setParallelism(1);
 

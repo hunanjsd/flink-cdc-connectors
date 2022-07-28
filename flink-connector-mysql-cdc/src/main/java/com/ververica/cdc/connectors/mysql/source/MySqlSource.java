@@ -163,7 +163,8 @@ public class MySqlSource<T>
                         sourceConfig.isIncludeSchemaChanges()),
                 readerContext.getConfiguration(),
                 mySqlSourceReaderContext,
-                sourceConfig, sourceReaderMetrics);
+                sourceConfig,
+                sourceReaderMetrics);
     }
 
     /**

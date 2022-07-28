@@ -253,7 +253,8 @@ public class MySqlSourceReaderTest extends MySqlSourceTestBase {
         final Method metricGroupMethod = readerContext.getClass().getMethod("metricGroup");
         metricGroupMethod.setAccessible(true);
         final MetricGroup metricGroup = (MetricGroup) metricGroupMethod.invoke(readerContext);
-        MySqlSourceReaderMetrics mySqlSourceReaderMetrics = new MySqlSourceReaderMetrics(metricGroup);
+        MySqlSourceReaderMetrics mySqlSourceReaderMetrics =
+                new MySqlSourceReaderMetrics(metricGroup);
         mySqlSourceReaderMetrics.registerMetrics();
         final MySqlRecordEmitter<SourceRecord> recordEmitter =
                 new MySqlRecordEmitter<>(

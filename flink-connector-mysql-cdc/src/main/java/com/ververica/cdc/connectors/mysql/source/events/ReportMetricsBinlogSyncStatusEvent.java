@@ -18,9 +18,10 @@
 
 package com.ververica.cdc.connectors.mysql.source.events;
 
+import org.apache.flink.api.connector.source.SourceEvent;
+
 import com.ververica.cdc.connectors.mysql.source.enumerator.MySqlSourceEnumerator;
 import com.ververica.cdc.connectors.mysql.source.reader.MySqlSourceReader;
-import org.apache.flink.api.connector.source.SourceEvent;
 
 /**
  * The {@link SourceEvent} that {@link MySqlSourceEnumerator} sends to {@link MySqlSourceReader} to
@@ -30,6 +31,5 @@ public class ReportMetricsBinlogSyncStatusEvent implements SourceEvent {
 
     private static final long serialVersionUID = 1L;
 
-    public ReportMetricsBinlogSyncStatusEvent() {
-    }
+    public ReportMetricsBinlogSyncStatusEvent() {}
 }

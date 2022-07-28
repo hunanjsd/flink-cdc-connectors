@@ -18,9 +18,6 @@
 
 package com.ververica.cdc.connectors.mysql.source.enumerator;
 
-import com.ververica.cdc.connectors.mysql.source.assigners.MySqlSnapshotSplitAssigner;
-import com.ververica.cdc.connectors.mysql.source.events.ReportMetricsBinlogSyncStatusEvent;
-import com.ververica.cdc.connectors.mysql.source.events.ReportMetricsSplitFinishedStatusEvent;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.connector.source.SourceEvent;
 import org.apache.flink.api.connector.source.SplitEnumerator;
@@ -30,6 +27,7 @@ import org.apache.flink.util.FlinkRuntimeException;
 import org.apache.flink.shaded.guava18.com.google.common.collect.Lists;
 
 import com.ververica.cdc.connectors.mysql.source.assigners.MySqlHybridSplitAssigner;
+import com.ververica.cdc.connectors.mysql.source.assigners.MySqlSnapshotSplitAssigner;
 import com.ververica.cdc.connectors.mysql.source.assigners.MySqlSplitAssigner;
 import com.ververica.cdc.connectors.mysql.source.assigners.state.PendingSplitsState;
 import com.ververica.cdc.connectors.mysql.source.config.MySqlSourceConfig;
@@ -40,6 +38,8 @@ import com.ververica.cdc.connectors.mysql.source.events.FinishedSnapshotSplitsRe
 import com.ververica.cdc.connectors.mysql.source.events.FinishedSnapshotSplitsRequestEvent;
 import com.ververica.cdc.connectors.mysql.source.events.LatestFinishedSplitsSizeEvent;
 import com.ververica.cdc.connectors.mysql.source.events.LatestFinishedSplitsSizeRequestEvent;
+import com.ververica.cdc.connectors.mysql.source.events.ReportMetricsBinlogSyncStatusEvent;
+import com.ververica.cdc.connectors.mysql.source.events.ReportMetricsSplitFinishedStatusEvent;
 import com.ververica.cdc.connectors.mysql.source.events.SuspendBinlogReaderAckEvent;
 import com.ververica.cdc.connectors.mysql.source.events.SuspendBinlogReaderEvent;
 import com.ververica.cdc.connectors.mysql.source.events.WakeupReaderEvent;
@@ -265,33 +265,34 @@ public class MySqlSourceEnumerator implements SplitEnumerator<MySqlSplit, Pendin
     }
 
     private void sendBinlogSyncMetricsToReaderIfNeed() {
-        if(!binlogReaderIsSuspended){
+//        if (!binlogReaderIsSuspended) {
             for (int subtaskId : getRegisteredReader()) {
                 context.sendEventToSourceReader(
                         subtaskId, new ReportMetricsBinlogSyncStatusEvent());
             }
-        }
+//        }
     }
-
 
     private void sendSnapShotMetricsToReaderIfNeed() {
         if (!isAssigningFinished(splitAssigner.getAssignerStatus())) {
-            if(splitAssigner instanceof MySqlSnapshotSplitAssigner){
+            if (splitAssigner instanceof MySqlSnapshotSplitAssigner) {
                 sendSyncMetricsToReader((MySqlSnapshotSplitAssigner) splitAssigner);
             } else if (splitAssigner instanceof MySqlHybridSplitAssigner) {
-                sendSyncMetricsToReader(((MySqlHybridSplitAssigner) splitAssigner).getSnapshotSplitAssigner());
+                sendSyncMetricsToReader(
+                        ((MySqlHybridSplitAssigner) splitAssigner).getSnapshotSplitAssigner());
             }
         }
     }
 
-    private void sendSyncMetricsToReader(MySqlSnapshotSplitAssigner mySqlSnapshotSplitAssigner){
+    private void sendSyncMetricsToReader(MySqlSnapshotSplitAssigner mySqlSnapshotSplitAssigner) {
         for (int subtaskId : getRegisteredReader()) {
             context.sendEventToSourceReader(
-                    subtaskId, new ReportMetricsSplitFinishedStatusEvent(mySqlSnapshotSplitAssigner.getSplitFinishedSize(),
+                    subtaskId,
+                    new ReportMetricsSplitFinishedStatusEvent(
+                            mySqlSnapshotSplitAssigner.getSplitFinishedSize(),
                             mySqlSnapshotSplitAssigner.getSplitTotalSize()));
         }
     }
-
 
     private void sendBinlogMeta(int subTask, BinlogSplitMetaRequestEvent requestEvent) {
         // initialize once

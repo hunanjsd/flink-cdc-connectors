@@ -35,7 +35,8 @@ public class ReportMetricsSplitFinishedStatusEvent implements SourceEvent {
 
     private final Integer totalSplitSize;
 
-    public ReportMetricsSplitFinishedStatusEvent(Integer finishedSplitSize, Integer totalSplitSize) {
+    public ReportMetricsSplitFinishedStatusEvent(
+            Integer finishedSplitSize, Integer totalSplitSize) {
         this.finishedSplitSize = finishedSplitSize;
         this.totalSplitSize = totalSplitSize;
     }
