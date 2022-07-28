@@ -18,6 +18,7 @@
 
 package com.ververica.cdc.connectors.mysql.source.enumerator;
 
+import com.ververica.cdc.connectors.mysql.source.assigners.MySqlBinlogSplitAssigner;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.connector.source.SourceEvent;
 import org.apache.flink.api.connector.source.SplitEnumerator;
@@ -265,13 +266,24 @@ public class MySqlSourceEnumerator implements SplitEnumerator<MySqlSplit, Pendin
     }
 
     private void sendBinlogSyncMetricsToReaderIfNeed() {
-//        if (!binlogReaderIsSuspended) {
-            for (int subtaskId : getRegisteredReader()) {
-                context.sendEventToSourceReader(
-                        subtaskId, new ReportMetricsBinlogSyncStatusEvent());
+        if(splitAssigner instanceof MySqlHybridSplitAssigner){
+            if(((MySqlHybridSplitAssigner) splitAssigner).isBinlogSplitAssigned()){
+                sendBinlogSyncMetricsToReader();
             }
-//        }
+        }else if(splitAssigner instanceof MySqlBinlogSplitAssigner){
+            if(((MySqlBinlogSplitAssigner) splitAssigner).isBinlogSplitAssigned()){
+                sendBinlogSyncMetricsToReader();
+            }
+        }
     }
+
+    private void sendBinlogSyncMetricsToReader() {
+        for (int subtaskId : getRegisteredReader()) {
+            context.sendEventToSourceReader(
+                    subtaskId, new ReportMetricsBinlogSyncStatusEvent());
+        }
+    }
+
 
     private void sendSnapShotMetricsToReaderIfNeed() {
         if (!isAssigningFinished(splitAssigner.getAssignerStatus())) {

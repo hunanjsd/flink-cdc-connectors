@@ -230,4 +230,8 @@ public class MySqlHybridSplitAssigner implements MySqlSplitAssigner {
     public MySqlSnapshotSplitAssigner getSnapshotSplitAssigner() {
         return snapshotSplitAssigner;
     }
+
+    public boolean isBinlogSplitAssigned() {
+        return isBinlogSplitAssigned;
+    }
 }

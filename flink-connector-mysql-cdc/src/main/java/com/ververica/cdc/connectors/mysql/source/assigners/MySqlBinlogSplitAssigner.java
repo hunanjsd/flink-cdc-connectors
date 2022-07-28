@@ -140,4 +140,8 @@ public class MySqlBinlogSplitAssigner implements MySqlSplitAssigner {
             throw new FlinkRuntimeException("Read the binlog offset error", e);
         }
     }
+
+    public boolean isBinlogSplitAssigned() {
+        return isBinlogSplitAssigned;
+    }
 }
