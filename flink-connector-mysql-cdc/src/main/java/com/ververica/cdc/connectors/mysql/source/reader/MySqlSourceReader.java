@@ -18,7 +18,6 @@
 
 package com.ververica.cdc.connectors.mysql.source.reader;
 
-import com.ververica.cdc.connectors.mysql.debezium.reader.BinlogSplitReader;
 import org.apache.flink.api.connector.source.SourceEvent;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.base.source.reader.RecordEmitter;
@@ -37,8 +36,8 @@ import com.ververica.cdc.connectors.mysql.source.events.FinishedSnapshotSplitsRe
 import com.ververica.cdc.connectors.mysql.source.events.FinishedSnapshotSplitsRequestEvent;
 import com.ververica.cdc.connectors.mysql.source.events.LatestFinishedSplitsSizeEvent;
 import com.ververica.cdc.connectors.mysql.source.events.LatestFinishedSplitsSizeRequestEvent;
-import com.ververica.cdc.connectors.mysql.source.events.ReportMetricsBinlogSyncStatusEvent;
-import com.ververica.cdc.connectors.mysql.source.events.ReportMetricsSplitFinishedStatusEvent;
+import com.ververica.cdc.connectors.mysql.source.events.ReportBinlogSyncMetricsRequestEvent;
+import com.ververica.cdc.connectors.mysql.source.events.ReportSnapshotMetricsRequestEvent;
 import com.ververica.cdc.connectors.mysql.source.events.SuspendBinlogReaderAckEvent;
 import com.ververica.cdc.connectors.mysql.source.events.SuspendBinlogReaderEvent;
 import com.ververica.cdc.connectors.mysql.source.events.WakeupReaderEvent;
@@ -86,9 +85,9 @@ public class MySqlSourceReader<T>
     private final Map<String, MySqlBinlogSplit> uncompletedBinlogSplits;
     private final int subtaskId;
     private final MySqlSourceReaderContext mySqlSourceReaderContext;
-    private MySqlBinlogSplit suspendedBinlogSplit;
     private final MySqlSourceReaderMetrics mySqlSourceReaderMetrics;
-    private final MySqlSplitReader mySqlSplitReader;
+    private MySqlBinlogSplit suspendedBinlogSplit;
+    private boolean isAssignedBinlogSplit = false;
 
     public MySqlSourceReader(
             FutureCompletingBlockingQueue<RecordsWithSplitIds<SourceRecord>> elementQueue,
@@ -96,8 +95,7 @@ public class MySqlSourceReader<T>
             RecordEmitter<SourceRecord, T, MySqlSplitState> recordEmitter,
             Configuration config,
             MySqlSourceReaderContext context,
-            MySqlSourceConfig sourceConfig,
-            MySqlSourceReaderMetrics mySqlSourceReaderMetrics) {
+            MySqlSourceConfig sourceConfig) {
         super(
                 elementQueue,
                 new SingleThreadFetcherManager<>(elementQueue, splitReaderSupplier::get),
@@ -110,8 +108,7 @@ public class MySqlSourceReader<T>
         this.subtaskId = context.getSourceReaderContext().getIndexOfSubtask();
         this.mySqlSourceReaderContext = context;
         this.suspendedBinlogSplit = null;
-        this.mySqlSplitReader = splitReaderSupplier.get();
-        this.mySqlSourceReaderMetrics = mySqlSourceReaderMetrics;
+        this.mySqlSourceReaderMetrics = context.getMySqlSourceReaderMetrics();
     }
 
     @Override
@@ -188,6 +185,7 @@ public class MySqlSourceReader<T>
                 }
             } else {
                 MySqlBinlogSplit binlogSplit = split.asBinlogSplit();
+                isAssignedBinlogSplit = true;
                 // the binlog split is suspended
                 if (binlogSplit.isSuspended()) {
                     suspendedBinlogSplit = binlogSplit;
@@ -275,27 +273,24 @@ public class MySqlSourceReader<T>
                 suspendedBinlogSplit = null;
                 this.addSplits(Collections.singletonList(binlogSplit));
             }
-        } else if (sourceEvent instanceof ReportMetricsSplitFinishedStatusEvent) {
-            ReportMetricsSplitFinishedStatusEvent metricsSplitFinishedStatusEvent =
-                    (ReportMetricsSplitFinishedStatusEvent) sourceEvent;
+        } else if (sourceEvent instanceof ReportSnapshotMetricsRequestEvent) {
+            ReportSnapshotMetricsRequestEvent metricsSplitFinishedStatusEvent =
+                    (ReportSnapshotMetricsRequestEvent) sourceEvent;
             mySqlSourceReaderMetrics.recordSourceSplitFinishedSize(
                     metricsSplitFinishedStatusEvent.getFinishedSplitSize());
             mySqlSourceReaderMetrics.recordSourceSplitTotalSize(
                     metricsSplitFinishedStatusEvent.getTotalSplitSize());
-        } else if (sourceEvent instanceof ReportMetricsBinlogSyncStatusEvent) {
-            final MySqlConnection jdbcConnection =
-                    DebeziumUtils.createMySqlConnection(sourceConfig.getDbzConfiguration());
-            BinlogOffset currentBinlogOffset = DebeziumUtils.currentBinlogOffset(jdbcConnection);
-            mySqlSourceReaderMetrics.recordSourceCurrentBinlogFileSerialNumAndPos(
-                    currentBinlogOffset.getFilenameSerialNum(), currentBinlogOffset.getPosition());
-            mySqlSourceReaderMetrics.recordMaxBinlogSize(
-                    DebeziumUtils.getSourceMaxBinlogSize(jdbcConnection));
-            try {
-                jdbcConnection.close();
-            } catch (SQLException e) {
-                throw new RuntimeException("Fail to close mysql jdbc connection.", e);
+        } else if (sourceEvent instanceof ReportBinlogSyncMetricsRequestEvent) {
+            // 因为 reader 可能有多个, 但是 binlog split 只存在一个 reader 中
+            if (isAssignedBinlogSplit) {
+                BinlogOffset currentBinlogOffset =
+                        ((ReportBinlogSyncMetricsRequestEvent) sourceEvent).getBinlogOffset();
+                mySqlSourceReaderMetrics.recordSourceCurrentBinlogFileSerialNumAndPos(
+                        currentBinlogOffset.getFilenameSerialNum(),
+                        currentBinlogOffset.getPosition());
+                mySqlSourceReaderMetrics.recordMaxBinlogSize(
+                        ((ReportBinlogSyncMetricsRequestEvent) sourceEvent).getMaxBinlogFileSize());
             }
-            System.out.printf("---------- subtask %s handleSourceEvents :%s ----------%n", subtaskId, mySqlSourceReaderMetrics.getSourceBinlogSyncLag());
         } else {
             super.handleSourceEvents(sourceEvent);
         }

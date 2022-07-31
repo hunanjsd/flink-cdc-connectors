@@ -383,14 +383,6 @@ public class MySqlSnapshotSplitAssigner implements MySqlSplitAssigner {
         return noMoreSplits() && assignedSplits.size() == splitFinishedOffsets.size();
     }
 
-    public Integer getSplitFinishedSize() {
-        return splitFinishedOffsets.size();
-    }
-
-    public Integer getSplitTotalSize() {
-        return remainingSplits.size() + splitFinishedOffsets.size();
-    }
-
     private void splitChunksForRemainingTables() {
         try {
             for (TableId nextTable : remainingTables) {
@@ -426,5 +418,13 @@ public class MySqlSnapshotSplitAssigner implements MySqlSplitAssigner {
             MySqlSourceConfig sourceConfig, boolean isTableIdCaseSensitive) {
         MySqlSchema mySqlSchema = new MySqlSchema(sourceConfig, isTableIdCaseSensitive);
         return new ChunkSplitter(mySqlSchema, sourceConfig);
+    }
+
+    public Integer getSplitFinishedSize() {
+        return splitFinishedOffsets.size();
+    }
+
+    public Integer getSplitTotalSize() {
+        return remainingSplits.size() + splitFinishedOffsets.size();
     }
 }

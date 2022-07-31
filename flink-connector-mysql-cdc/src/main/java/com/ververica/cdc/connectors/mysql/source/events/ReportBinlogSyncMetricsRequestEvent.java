@@ -21,15 +21,34 @@ package com.ververica.cdc.connectors.mysql.source.events;
 import org.apache.flink.api.connector.source.SourceEvent;
 
 import com.ververica.cdc.connectors.mysql.source.enumerator.MySqlSourceEnumerator;
+import com.ververica.cdc.connectors.mysql.source.offset.BinlogOffset;
 import com.ververica.cdc.connectors.mysql.source.reader.MySqlSourceReader;
 
 /**
  * The {@link SourceEvent} that {@link MySqlSourceEnumerator} sends to {@link MySqlSourceReader} to
- * ask report split finished status
+ * ask report binlog sync processed status
  */
-public class ReportMetricsBinlogSyncStatusEvent implements SourceEvent {
+public class ReportBinlogSyncMetricsRequestEvent implements SourceEvent {
 
     private static final long serialVersionUID = 1L;
 
-    public ReportMetricsBinlogSyncStatusEvent() {}
+    private final BinlogOffset binlogOffset;
+
+    private Long maxBinlogFileSize = 1073741824L;
+
+    public ReportBinlogSyncMetricsRequestEvent(BinlogOffset binlogOffset) {
+        this.binlogOffset = binlogOffset;
+    }
+
+    public BinlogOffset getBinlogOffset() {
+        return binlogOffset;
+    }
+
+    public void setMaxBinlogFileSize(Long maxBinlogFileSize) {
+        this.maxBinlogFileSize = maxBinlogFileSize;
+    }
+
+    public Long getMaxBinlogFileSize() {
+        return maxBinlogFileSize;
+    }
 }

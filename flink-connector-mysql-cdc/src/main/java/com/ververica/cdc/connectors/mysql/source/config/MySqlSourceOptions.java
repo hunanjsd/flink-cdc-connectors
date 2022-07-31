@@ -167,7 +167,7 @@ public class MySqlSourceOptions {
     public static final ConfigOption<Duration> HEARTBEAT_INTERVAL =
             ConfigOptions.key("heartbeat.interval")
                     .durationType()
-                    .defaultValue(Duration.ofSeconds(30))
+                    .defaultValue(Duration.ofSeconds(10))
                     .withDescription(
                             "Optional interval of sending heartbeat event for tracing the latest available binlog offsets");
 

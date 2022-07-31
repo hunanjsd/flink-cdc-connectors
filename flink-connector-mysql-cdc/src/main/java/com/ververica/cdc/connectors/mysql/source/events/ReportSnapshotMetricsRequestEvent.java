@@ -27,7 +27,7 @@ import com.ververica.cdc.connectors.mysql.source.reader.MySqlSourceReader;
  * The {@link SourceEvent} that {@link MySqlSourceEnumerator} sends to {@link MySqlSourceReader} to
  * ask report split finished status
  */
-public class ReportMetricsSplitFinishedStatusEvent implements SourceEvent {
+public class ReportSnapshotMetricsRequestEvent implements SourceEvent {
 
     private static final long serialVersionUID = 1L;
 
@@ -35,8 +35,7 @@ public class ReportMetricsSplitFinishedStatusEvent implements SourceEvent {
 
     private final Integer totalSplitSize;
 
-    public ReportMetricsSplitFinishedStatusEvent(
-            Integer finishedSplitSize, Integer totalSplitSize) {
+    public ReportSnapshotMetricsRequestEvent(Integer finishedSplitSize, Integer totalSplitSize) {
         this.finishedSplitSize = finishedSplitSize;
         this.totalSplitSize = totalSplitSize;
     }

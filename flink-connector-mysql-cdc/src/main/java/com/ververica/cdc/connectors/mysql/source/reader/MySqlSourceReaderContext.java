@@ -20,6 +20,8 @@ package com.ververica.cdc.connectors.mysql.source.reader;
 
 import org.apache.flink.api.connector.source.SourceReaderContext;
 
+import com.ververica.cdc.connectors.mysql.source.metrics.MySqlSourceReaderMetrics;
+
 /**
  * A wrapper class that wraps {@link SourceReaderContext} for sharing message between {@link
  * MySqlSourceReader} and {@link MySqlSplitReader}.
@@ -28,6 +30,8 @@ public class MySqlSourceReaderContext {
 
     private final SourceReaderContext sourceReaderContext;
     private volatile boolean stopBinlogSplitReader;
+
+    private volatile MySqlSourceReaderMetrics mySqlSourceReaderMetrics;
 
     public MySqlSourceReaderContext(final SourceReaderContext sourceReaderContext) {
         this.sourceReaderContext = sourceReaderContext;
@@ -48,5 +52,13 @@ public class MySqlSourceReaderContext {
 
     public void resetStopBinlogSplitReader() {
         this.stopBinlogSplitReader = false;
+    }
+
+    public void setMySqlSourceReaderMetrics(MySqlSourceReaderMetrics mySqlSourceReaderMetrics) {
+        this.mySqlSourceReaderMetrics = mySqlSourceReaderMetrics;
+    }
+
+    public MySqlSourceReaderMetrics getMySqlSourceReaderMetrics() {
+        return mySqlSourceReaderMetrics;
     }
 }

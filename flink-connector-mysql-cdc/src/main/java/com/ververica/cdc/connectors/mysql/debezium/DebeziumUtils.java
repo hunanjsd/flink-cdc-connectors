@@ -178,10 +178,9 @@ public class DebeziumUtils {
                                 .get(MySqlSystemVariables.LOWER_CASE_TABLE_NAMES));
     }
 
-    /** mysql/mariadb 最大 binlog 文件 size, 默认为 256MB */
-    public static long getSourceMaxBinlogSize(JdbcConnection connection) {
+    public static Long getSourceMaxBinlogSize(JdbcConnection connection) {
         return Long.parseLong(
-                readMySqlSystemVariables(connection).getOrDefault("max_binlog_size", "268435456"));
+                readMySqlSystemVariables(connection).getOrDefault("max_binlog_size", "1073741824"));
     }
 
     public static Map<String, String> readMySqlSystemVariables(JdbcConnection connection) {

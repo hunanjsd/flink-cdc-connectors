@@ -227,11 +227,11 @@ public class MySqlHybridSplitAssigner implements MySqlSplitAssigner {
                 finishedSnapshotSplitInfos.size());
     }
 
-    public MySqlSnapshotSplitAssigner getSnapshotSplitAssigner() {
-        return snapshotSplitAssigner;
+    public Integer getSplitFinishedSize() {
+        return snapshotSplitAssigner.getSplitFinishedSize();
     }
 
-    public boolean isBinlogSplitAssigned() {
-        return isBinlogSplitAssigned;
+    public Integer getSplitTotalSize() {
+        return snapshotSplitAssigner.getSplitTotalSize();
     }
 }

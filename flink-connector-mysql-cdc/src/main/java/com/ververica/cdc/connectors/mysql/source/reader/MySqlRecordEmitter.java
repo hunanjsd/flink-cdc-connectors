@@ -97,6 +97,7 @@ public final class MySqlRecordEmitter<T>
         } else if (isDataChangeRecord(element)) {
             updateStartingOffsetForSplit(splitState, element);
             reportMetrics(element);
+            reportProcessedBinlogMetrics(splitState);
             emitElement(element, output);
         } else if (isHeartbeatEvent(element)) {
             updateStartingOffsetForSplit(splitState, element);
@@ -142,7 +143,8 @@ public final class MySqlRecordEmitter<T>
             if (binlogOffset != null) {
                 sourceReaderMetrics.recordTaskProcessedBinlogFileSerialNumAndPos(
                         binlogOffset.getFilenameSerialNum(), binlogOffset.getPosition());
-                System.out.printf("---------- sourceReaderMetrics :%s ----------%n", sourceReaderMetrics.getSourceBinlogSyncLag());
+                System.out.printf(
+                        "---------- sourceReaderMetrics :%s ----------%n", sourceReaderMetrics);
             }
         }
     }

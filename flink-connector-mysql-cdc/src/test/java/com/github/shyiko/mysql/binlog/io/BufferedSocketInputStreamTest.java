@@ -29,18 +29,6 @@ import static org.junit.Assert.assertTrue;
 public class BufferedSocketInputStreamTest {
 
     @Test
-    public void test() {
-        String longValue = "003286";
-        System.out.println(getFilenameSerialNumber());
-    }
-
-    public Long getFilenameSerialNumber() {
-        String fileName = "mysql-bin.003286";
-        String[] fileNameWithNumber = fileName.split("\\.");
-        return fileNameWithNumber.length > 1 ? Long.parseLong(fileNameWithNumber[1]) : 1L;
-    }
-
-    @Test
     public void testReadFromBufferedSocketInputStream() throws Exception {
         BufferedSocketInputStream in =
                 new BufferedSocketInputStream(

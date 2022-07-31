@@ -173,9 +173,4 @@ public class MySqlSplitReader implements SplitReader<SourceRecord, MySqlSplit> {
         currentSplitId = null;
         return finishedRecords;
     }
-
-    @Nullable
-    public DebeziumReader<SourceRecord, MySqlSplit> getCurrentReader() {
-        return currentReader;
-    }
 }

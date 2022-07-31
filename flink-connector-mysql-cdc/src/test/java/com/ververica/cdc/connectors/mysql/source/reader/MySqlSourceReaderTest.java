@@ -263,14 +263,14 @@ public class MySqlSourceReaderTest extends MySqlSourceTestBase {
                         configuration.isIncludeSchemaChanges());
         final MySqlSourceReaderContext mySqlSourceReaderContext =
                 new MySqlSourceReaderContext(readerContext);
+        mySqlSourceReaderContext.setMySqlSourceReaderMetrics(mySqlSourceReaderMetrics);
         return new MySqlSourceReader<>(
                 elementsQueue,
                 () -> createSplitReader(configuration, mySqlSourceReaderContext),
                 recordEmitter,
                 readerContext.getConfiguration(),
                 mySqlSourceReaderContext,
-                configuration,
-                mySqlSourceReaderMetrics);
+                configuration);
     }
 
     private MySqlSplitReader createSplitReader(
