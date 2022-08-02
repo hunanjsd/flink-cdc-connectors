@@ -25,7 +25,7 @@ import com.ververica.cdc.connectors.mysql.source.reader.MySqlSourceReader;
 
 /**
  * The {@link SourceEvent} that {@link MySqlSourceEnumerator} sends to {@link MySqlSourceReader} to
- * ask report split finished status
+ * ask report split finished status.
  */
 public class ReportSnapshotMetricsRequestEvent implements SourceEvent {
 

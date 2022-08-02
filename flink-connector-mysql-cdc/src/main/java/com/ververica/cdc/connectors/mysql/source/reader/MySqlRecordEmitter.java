@@ -97,11 +97,9 @@ public final class MySqlRecordEmitter<T>
         } else if (isDataChangeRecord(element)) {
             updateStartingOffsetForSplit(splitState, element);
             reportMetrics(element);
-            reportProcessedBinlogMetrics(splitState);
             emitElement(element, output);
         } else if (isHeartbeatEvent(element)) {
             updateStartingOffsetForSplit(splitState, element);
-            reportProcessedBinlogMetrics(splitState);
         } else {
             // unknown element
             LOG.info("Meet unknown element {}, just skip.", element);
@@ -112,6 +110,7 @@ public final class MySqlRecordEmitter<T>
         if (splitState.isBinlogSplitState()) {
             BinlogOffset position = getBinlogPosition(element);
             splitState.asBinlogSplitState().setStartingOffset(position);
+            reportProcessedBinlogMetrics(position);
         }
     }
 
@@ -137,15 +136,10 @@ public final class MySqlRecordEmitter<T>
         }
     }
 
-    private void reportProcessedBinlogMetrics(MySqlSplitState splitState) {
-        if (splitState.isBinlogSplitState()) {
-            BinlogOffset binlogOffset = splitState.asBinlogSplitState().getStartingOffset();
-            if (binlogOffset != null) {
-                sourceReaderMetrics.recordTaskProcessedBinlogFileSerialNumAndPos(
-                        binlogOffset.getFilenameSerialNum(), binlogOffset.getPosition());
-                System.out.printf(
-                        "---------- sourceReaderMetrics :%s ----------%n", sourceReaderMetrics);
-            }
+    private void reportProcessedBinlogMetrics(BinlogOffset binlogOffset) {
+        sourceReaderMetrics.recordTaskProcessedBinlogOffset(binlogOffset);
+        if (binlogOffset.isAfter(sourceReaderMetrics.getSourceCurrentBinlogOffset())) {
+            sourceReaderMetrics.recordSourceCurrentBinlogOffset(binlogOffset);
         }
     }
 

@@ -21,6 +21,7 @@ package com.ververica.cdc.connectors.mysql.source.metrics;
 import org.apache.flink.metrics.Gauge;
 import org.apache.flink.metrics.MetricGroup;
 
+import com.ververica.cdc.connectors.mysql.source.offset.BinlogOffset;
 import com.ververica.cdc.connectors.mysql.source.reader.MySqlSourceReader;
 
 /** A collection class for handling metrics in {@link MySqlSourceReader}. */
@@ -47,12 +48,12 @@ public class MySqlSourceReaderMetrics {
      */
     private volatile long emitDelay = 0L;
 
-    private volatile long sourceSplitTotalSize = 0L;
+    private volatile long sourceSplitTotalSize = 1L;
     private volatile long sourceSplitFinishedSize = 0L;
-    private volatile long sourceCurrentBinlogFileSerialNum = 0L;
-    private volatile long sourceCurrentBinlogFilePos = 0L;
-    private volatile long taskProcessedBinlogFileSerialNum = 0L;
-    private volatile long taskProcessedBinlogFilePos = 0L;
+
+    private volatile BinlogOffset sourceCurrentBinlogOffset = BinlogOffset.INITIAL_OFFSET;
+
+    private volatile BinlogOffset taskProcessedBinlogOffset = BinlogOffset.INITIAL_OFFSET;
     private volatile long sourceMaxBinlogSize = 0L;
 
     public MySqlSourceReaderMetrics(MetricGroup metricGroup) {
@@ -65,12 +66,12 @@ public class MySqlSourceReaderMetrics {
         metricGroup.gauge("sourceIdleTime", (Gauge<Long>) this::getIdleTime);
 
         // source snapshot 阶段监控 metrics
-        metricGroup.gauge("sourceSplitSize", (Gauge<Long>) this::getSourceSplitTotalSize);
+        metricGroup.gauge("sourceSplitTotalSize", (Gauge<Long>) this::getSourceSplitTotalSize);
         metricGroup.gauge(
                 "sourceSplitFinishedSize", (Gauge<Long>) this::getSourceSplitFinishedSize);
         metricGroup.gauge(
                 "sourceSnapshotCompletionRate",
-                (Gauge<Float>) this::getSourceSnapshotCompletionRate);
+                (Gauge<Double>) this::getSourceSnapshotCompletionRate);
 
         // source binlog 同步阶段监控 metrics
         metricGroup.gauge(
@@ -111,33 +112,33 @@ public class MySqlSourceReaderMetrics {
     }
 
     public long getSourceCurrentBinlogFilePos() {
-        return sourceCurrentBinlogFilePos;
+        return this.sourceCurrentBinlogOffset.getPosition();
     }
 
     public long getSourceCurrentBinlogFileSerialNum() {
-        return sourceCurrentBinlogFileSerialNum;
+        return this.sourceCurrentBinlogOffset.getFilenameSerialNum();
     }
 
     public long getTaskProcessedBinlogFileSerialNum() {
-        return taskProcessedBinlogFileSerialNum;
+        return this.taskProcessedBinlogOffset.getFilenameSerialNum();
     }
 
     public long getTaskProcessedBinlogFilePos() {
-        return taskProcessedBinlogFilePos;
+        return this.taskProcessedBinlogOffset.getPosition();
     }
 
     public long getSourceBinlogSyncLag() {
-        return (sourceCurrentBinlogFileSerialNum - taskProcessedBinlogFileSerialNum)
+        return (getSourceCurrentBinlogFileSerialNum() - getTaskProcessedBinlogFileSerialNum())
                         * sourceMaxBinlogSize
-                + (sourceCurrentBinlogFilePos - taskProcessedBinlogFilePos);
+                + (getSourceCurrentBinlogFilePos() - getTaskProcessedBinlogFilePos());
     }
 
-    public float getSourceSnapshotCompletionRate() {
-        if (this.sourceSplitTotalSize != 0L) {
-            return (this.sourceSplitFinishedSize * 1.0f) / this.sourceSplitTotalSize;
-        } else {
-            return 0f;
-        }
+    public Double getSourceSnapshotCompletionRate() {
+        return (this.sourceSplitFinishedSize * 1.0) / (this.sourceSplitTotalSize * 1.0);
+    }
+
+    public BinlogOffset getSourceCurrentBinlogOffset() {
+        return sourceCurrentBinlogOffset;
     }
 
     public void recordProcessTime(long processTime) {
@@ -160,16 +161,12 @@ public class MySqlSourceReaderMetrics {
         this.sourceSplitFinishedSize = sourceSplitFinishedSize;
     }
 
-    public void recordSourceCurrentBinlogFileSerialNumAndPos(
-            long sourceCurrentBinlogFileSerialNum, long sourceCurrentBinlogFilePos) {
-        this.sourceCurrentBinlogFileSerialNum = sourceCurrentBinlogFileSerialNum;
-        this.sourceCurrentBinlogFilePos = sourceCurrentBinlogFilePos;
+    public void recordSourceCurrentBinlogOffset(BinlogOffset sourceCurrentBinlogOffset) {
+        this.sourceCurrentBinlogOffset = sourceCurrentBinlogOffset;
     }
 
-    public void recordTaskProcessedBinlogFileSerialNumAndPos(
-            long taskProcessedBinlogFileSerialNum, long taskProcessedBinlogFilePos) {
-        this.taskProcessedBinlogFileSerialNum = taskProcessedBinlogFileSerialNum;
-        this.taskProcessedBinlogFilePos = taskProcessedBinlogFilePos;
+    public void recordTaskProcessedBinlogOffset(BinlogOffset processedBinlogOffset) {
+        this.taskProcessedBinlogOffset = processedBinlogOffset;
     }
 
     public void recordMaxBinlogSize(long sourceMaxBinlogSize) {
@@ -192,13 +189,9 @@ public class MySqlSourceReaderMetrics {
                 + ", sourceSplitFinishedSize="
                 + sourceSplitFinishedSize
                 + ", sourceCurrentBinlogFileSerialNum="
-                + sourceCurrentBinlogFileSerialNum
                 + ", sourceCurrentBinlogFilePos="
-                + sourceCurrentBinlogFilePos
                 + ", taskProcessedBinlogFileSerialNum="
-                + taskProcessedBinlogFileSerialNum
                 + ", taskProcessedBinlogFilePos="
-                + taskProcessedBinlogFilePos
                 + ", sourceMaxBinlogSize="
                 + sourceMaxBinlogSize
                 + ", sourceSnapshotCompletionRate="

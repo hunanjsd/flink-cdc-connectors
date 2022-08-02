@@ -26,7 +26,7 @@ import com.ververica.cdc.connectors.mysql.source.reader.MySqlSourceReader;
 
 /**
  * The {@link SourceEvent} that {@link MySqlSourceEnumerator} sends to {@link MySqlSourceReader} to
- * ask report binlog sync processed status
+ * ask report binlog sync processed status.
  */
 public class ReportBinlogSyncMetricsRequestEvent implements SourceEvent {
 

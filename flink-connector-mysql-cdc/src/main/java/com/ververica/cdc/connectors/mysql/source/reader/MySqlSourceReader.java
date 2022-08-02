@@ -285,9 +285,7 @@ public class MySqlSourceReader<T>
             if (isAssignedBinlogSplit) {
                 BinlogOffset currentBinlogOffset =
                         ((ReportBinlogSyncMetricsRequestEvent) sourceEvent).getBinlogOffset();
-                mySqlSourceReaderMetrics.recordSourceCurrentBinlogFileSerialNumAndPos(
-                        currentBinlogOffset.getFilenameSerialNum(),
-                        currentBinlogOffset.getPosition());
+                mySqlSourceReaderMetrics.recordSourceCurrentBinlogOffset(currentBinlogOffset);
                 mySqlSourceReaderMetrics.recordMaxBinlogSize(
                         ((ReportBinlogSyncMetricsRequestEvent) sourceEvent).getMaxBinlogFileSize());
             }

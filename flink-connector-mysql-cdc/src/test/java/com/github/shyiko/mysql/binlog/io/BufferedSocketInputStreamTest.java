@@ -18,6 +18,7 @@
 
 package com.github.shyiko.mysql.binlog.io;
 
+import com.ververica.cdc.connectors.mysql.source.offset.BinlogOffset;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -51,5 +52,15 @@ public class BufferedSocketInputStreamTest {
         // reach the end of stream normally
         assertEquals(-1, in.read(buf, 0, buf.length));
         assertEquals(0, in.available());
+    }
+
+    @Test
+    public void test() {
+        float xx = (180L * 1.0f) / 398L;
+        String xx1 = "binlog-000123";
+        String xx2 = "binlog-000124";
+        BinlogOffset aa = new BinlogOffset(xx1, 11141);
+        BinlogOffset bb = new BinlogOffset(xx2, 11112);
+        System.out.println(aa.isAfter(bb));
     }
 }
